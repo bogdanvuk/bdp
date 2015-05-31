@@ -6,5 +6,6 @@ try:
         version = None
 except ImportError:
     version = None
-    
-from bdp.node import *
+
+from bdp.point import Point as p    
+from bdp.node import block, fig

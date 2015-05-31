@@ -5,28 +5,35 @@ Created on Mar 31, 2015
 '''
 from string import Template
 import copy
-import itertools
-import inspect
-import operator
-import subprocess
-# from alias_dict import AliasDict
-import subprocess
 import math
-from memoize.core import Memoizer
-import threading
 from tempfile import NamedTemporaryFile
 import os
-from glob import glob
 from cgitb import text
+import subprocess
 
-def to_units(num):
-#     return "{0}{1}".format(float(int(num)*bdp_config['grid']), "pt")
-    return "{0}{1}".format(num*bdp_config['grid'], "pt")
+from bdp.point import Point as p
 
-def from_units(str):
-#     return "{0}{1}".format(float(int(num)*bdp_config['grid']), "pt")
-    str = str.replace('pt', '')
-    return float(str) / bdp_config['grid']
+class Figure(object):
+    grid    = 10
+    origin  = p(1000, 1000)
+    
+    def to_units(self,num):
+        return "{0}{1}".format(num*self.grid, "pt")
+    
+    def from_units(self, s):
+        s = s.replace('pt', '')
+        return float(s) / self.grid
+    
+    def __init__(self):
+        self._tikz = ''
+        self._preamble = ''
+    
+    def __lshift__(self, val):
+        if hasattr(val, '_render_tikz'):
+            self._tikz += val._render_tikz(self) + '\n'
+            tmpl_list.append(val)
+        else:
+            self._tikz += val  + '\n'
 
 obj_list = []
 tmpl_list = [None]
@@ -36,105 +43,6 @@ def prev(i=0):
     i = -(i+1)
     return tmpl_list[i]
 
-def palign(x, y):
-    return Point(x[0], y[1])
-
-class Point(object):
-    def __init__(self, x, y=None):
-        try:
-            self.x = x[0]
-            self.y = x[1]
-        except TypeError:
-            self.x = x
-            self.y = y
-
-    def __getitem__(self, key):
-        if key == 0:
-            return self.x
-        else:
-            return self.y
-
-    def __setitem__(self, key, val):
-        if key == 0:
-            self.x = val
-        else:
-            self.y = val
-
-    def copy(self):
-        return Point(self.x, self.y)
-
-    def __str__(self):
-        return 'p({0},{1})'.format(self.x,self.y)
-
-    __repr__ = __str__
-
-    def __add__(self, other):
-        return Point(self[0] + other[0], self[1] + other[1])
-
-    def __radd__(self, other):
-        return Point(self[0] + other[0], self[1] + other[1])
-
-    def __div__(self, other):
-        return Point(self[0] / other, self[1] / other)
-
-    __truediv__ = __div__
-
-    def __sub__(self, other):
-        return Point(self[0] - other[0], self[1] - other[1])
-
-    def __mul__(self, other):
-        return Point(self[0] * other, self[1] * other)
-
-    def __rmul__(self, other):
-        return Point(self[0] * other, self[1] * other)
-
-#     def resolve(self):
-#         try:
-#             x = self.x.resolve()
-#         except AttributeError:
-#             x = self.x
-#
-#         try:
-#             y = self.y.k()
-#         except AttributeError:
-#             y = self.y
-#
-#         return Point(x,y)
-#
-#     @proxy_bioper
-#     def __getitem__(self, key):
-#         if key == 0:
-#             return self.x
-#         else:
-#             return self.y
-#
-#     @proxy_bioper
-#     def __add__(self, other):
-#         try:
-#             x = self.x + other.__getitem__(0, _resolve=True)
-#         except AttributeError:
-#             x = self.x + other[0]
-#
-#         try:
-#             y = self.y + other.__getitem__(1, _resolve=True)
-#         except AttributeError:
-#             y = self.y + other[1]
-#
-#         return Point(x,y)
-
-def mid(p1, p2):
-    return (p1 + p2)/2
-
-p = Point
-
-class PosOffset(object):
-
-    def resolve(self):
-        return Point(self.obj.pos) + Point(self.offset)
-
-    def __init__(self, obj, offset):
-        self.obj = obj
-        self.offset = offset
 
 class TemplatedObjects(object):
     def_settings = {}
@@ -193,20 +101,11 @@ class TemplatedObjects(object):
 
     def __call__(self, *args, **kwargs):
 
-        if (not args) and (not kwargs):
-            render = True
-        else:
-            render = False
-
         kwargs['template'] = self
 
         tmpl_cur = self.__class__(*args, **kwargs)
 
-        if render:
-            tmpl_list.append(tmpl_cur)
-            obj_list.append(tmpl_cur.render_tikz())
-        else:
-            tmpl_list[-1] = tmpl_cur
+        tmpl_list[-1] = tmpl_cur
 
         return tmpl_cur
 
@@ -251,7 +150,7 @@ class TikzMeta(TemplatedObjects):
                 yield s
 
 
-    def render_tikz_options(self):
+    def _render_tikz_options(self, fig=None):
         options = []
 
 #         if self.border:
@@ -262,7 +161,7 @@ class TikzMeta(TemplatedObjects):
         for s in self.options():
 #             print(s)
             try:
-                options.append(getattr(self, "render_tikz_" + s)())
+                options.append(getattr(self, "_render_tikz_" + s)())
             except AttributeError:
                 val = getattr(self, s)
 
@@ -295,38 +194,34 @@ class Node(TikzMeta):
                     'rel_anchor'    : 'anchor'
                     })
 
-    def render_tikz_font(self):
+    def _render_tikz_font(self, fig=None):
         return "font=\\" + self.font
 
-    def render_tikz_p(self):
-        pos = self.p + bdp_config['origin_offset'] + self.size/2
-        return "{0}, {1}".format(to_units(pos[0]), to_units(pos[1]))
+    def _render_tikz_p(self, fig=None):
+        pos = self.p + fig.origin + self.size/2
+        return "{0}, {1}".format(fig.to_units(pos[0]), fig.to_units(pos[1]))
 
-    def render_tikz_t(self):
+    def _render_tikz_t(self, fig=None):
         try:
-#             try:
-#                 fs = self.font_size
-#                 return "\\" + fs + '{' + self.t + '}'
-#             except AttributeError:
             return self.t
         except AttributeError:
             return ''
 
-    def render_tikz(self):
+    def _render_tikz(self, fig=None):
         try:
-            pos = self.render_tikz_p()
+            pos = self._render_tikz_p(fig)
         except AttributeError:
             pos = ''
 
         if pos:
             pos = "at ({0})".format(pos)
 
-        options = self.render_tikz_options()
+        options = self._render_tikz_options(fig)
 
         if options:
             options = "[{0}]".format(options)
 
-        text = self.render_tikz_t()
+        text = self._render_tikz_t(fig)
 
         if text:
             text = "{{{0}}}".format(text)
@@ -365,34 +260,9 @@ class Element(Node):
         if size is not None:
             self.size = size
 
-    def render_tikz_size(self):
+    def _render_tikz_size(self, fig):
         if self.size:
-            return "minimum width=" + to_units(self.size[0]) + "," + "minimum height=" + to_units(self.size[1])
-
-#     @property
-#     def p(self):
-#         return self.__getattr__('p')
-# #         pos = self.__getattr__('p')
-# #
-# #         try:
-# #             return pos + self.anchor
-# #         except AttributeError:
-# #             return pos
-#
-#     @p.setter
-#     def p(self, value):
-# #         self.settings['p'] = value
-# #         self.__dict__['p'] = value
-#         self.__dict__['p'] = self.anchor + value
-
-#     @property
-#     def anchor(self):
-#         return self.__getattr__('anchor')
-#
-#     @anchor.setter
-#     def anchor(self, value):
-# #         self.settings['anchor'] = self.p - value
-#         self.__dict__['anchor'] = self.p - value
+            return "minimum width=" + fig.to_units(self.size[0]) + "," + "minimum height=" + fig.to_units(self.size[1])
 
     def align(self, other, own=None):
 #         self.anchor = own - other
@@ -401,7 +271,7 @@ class Element(Node):
         if own is None:
             own = self.p
 
-        self.p = Point(other) - (Point(own) - self.p)
+        self.p = p(other) - (p(own) - self.p)
 
         return self
 
@@ -495,7 +365,7 @@ class Shape(Element):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def render_tikz_shape(self):
+    def _render_tikz_shape(self):
         return self.shape
 
     def a(self, angle=0):
@@ -655,42 +525,32 @@ class Text(Element):
 
     def __init__(self, t=None, size=None, **kwargs):
         super().__init__(size, **kwargs)
-
-#         self.memo = Memoizer({})
-#         self.memo = {}
-
         if t is not None:
             self.t = t
 
-    def render_tikz_p(self):
+    def _render_tikz_p(self, fig=None):
         if self.size_measure:
             raise AttributeError
         else:
-            return super().render_tikz_p()
+            return super()._render_tikz_p(fig)
 
-    def render_tikz_margin(self):
+    def _render_tikz_margin(self, fig=None):
         if self.size_measure:
             raise AttributeError
 
         if self.margin[0] is not None:
-            return "text width=" + to_units(self.size[0] - 2*self.margin[0])
+            return "text width=" + fig.to_units(self.size[0] - 2*self.margin[0])
 
         if self.margin[1] is not None:
-            return "text height=" + to_units(self.size[1] - 2*self.margin[1])
+            return "text height=" + fig.to_units(self.size[1] - 2*self.margin[1])
 
     def _get_size_from_text(self, size):
         if self.t:
             bdp_console_header = '[BDP]'
 
-#             try:
-#                 font = self.font
-#                 text = '\\' + font + '{' + self.t + '}'
-#             except AttributeError:
-#                 text = self.t
-
             self.tikz_non_options.extend(['size', 'margin'])
             self.size_measure = True
-            text = self.render_tikz()
+            text = self._render_tikz(fig)
             self.tikz_non_options.remove('size')
             self.tikz_non_options.remove('margin')
             self.size_measure = False
@@ -764,7 +624,7 @@ $node
                         for i in range(2):
                             if size[i] is None:
 #                                 size[0] = math.ceil(from_units(vals[0]) + (2*self.margin[0]))
-                                size[i] = from_units(vals[i]) + (2*self.margin[i])
+                                size[i] = fig.from_units(vals[i]) + (2*self.margin[i])
 
                                 if size[i] == 0:
                                     size[i] = 1
@@ -831,22 +691,6 @@ class Block(Shape):
 
     text = None
 
-#     @property
-#     def t(self):
-#         return self.text.t
-#
-#     @t.setter
-#     def t(self, val):
-#         self.text.t = val
-#
-#     @property
-#     def margin(self):
-#         return self.text.margin
-#
-#     @margin.setter
-#     def margin(self, val):
-#         self.text.margin = val
-
     @property
     def text_align(self):
         return self.__getattr__('text_align')
@@ -860,7 +704,7 @@ class Block(Shape):
 #             self.settings['text_align'] = val
             self.__dict__['text_align'] = val
 
-    def render_tikz(self):
+    def _render_tikz(self, fig=None):
         self.text.p = self.p
 
         try:
@@ -928,10 +772,10 @@ class Block(Shape):
         except AttributeError:
             pass
 
-        text_node = self.text.render_tikz()
+        text_node = self.text._render_tikz(fig)
 #         text = self.t
 #         self.t = None #Remove text so it wouldn't be printed twice
-        shape_node = super().render_tikz()
+        shape_node = super()._render_tikz(fig)
 #         self.t = text
         return shape_node + '\n' + text_node
 
@@ -958,25 +802,6 @@ class Block(Shape):
             setattr(self.text, k, v)
 
 class Segment(object):
-
-#     def c(self, x=0, y=0):
-#         max_x = self.path[self.slice.start][0]
-#         max_y = self.path[self.slice.start][1]
-#         min_x = self.path[self.slice.start][0]
-#         min_y = self.path[self.slice.start][1]
-#
-#         for s in self.path[self.slice.start+1: self.slice.stop]:
-#             if s[0] > max_x:
-#                 max_x = s[0]
-#             elif s[0] < min_x:
-#                 min_x = s[0]
-#
-#             if s[1] > max_y:
-#                 max_y = s[1]
-#             elif s[1] < min_y:
-#                 min_y = s[1]
-#
-#
 
     def _seglen(self, p1, p2):
         if p1[0] == p2[0]:
@@ -1032,13 +857,13 @@ class Path(TikzMeta):
                                             'looseness', 'rounded_corners', 
                                             'draw', 'decorate', 'decoration']
 
-    def render_tikz_path(self):
+    def _render_tikz_path(self, fig=None):
         path_tikz = []
         
         for p,r in zip(self.path, self.routing):
 
-            pos = p + bdp_config['origin_offset']
-            path_str = "(" + to_units(pos[0]) + "," + to_units(pos[1]) + ")"
+            pos = p + fig.origin
+            path_str = "(" + fig.to_units(pos[0]) + "," + fig.to_units(pos[1]) + ")"
 
             path_tikz.append(path_str)
             if not self.smooth:
@@ -1049,20 +874,20 @@ class Path(TikzMeta):
         else:
             return ' '.join(path_tikz)
 
-    def render_tikz_shorten(self):
-        return 'shorten <=' + to_units(self.shorten[0]) + ',shorten >=' + to_units(self.shorten[1])
+    def _render_tikz_shorten(self, fig=None):
+        return 'shorten <=' + fig.to_units(self.shorten[0]) + ',shorten >=' + fig.to_units(self.shorten[1])
 
-    def render_tikz_style(self):
+    def _render_tikz_style(self, fig=None):
         return self.style
 
-    def render_tikz(self):
+    def _render_tikz(self, fig=None):
 
-        options = self.render_tikz_options()
+        options = self._render_tikz_options(fig)
 
         if options:
             options = "[{0}]".format(options)
 
-        path = self.render_tikz_path()
+        path = self._render_tikz_path(fig)
 
         if not self.smooth:
             return ' '.join(["\\path ", options, path, ";\n"])
@@ -1117,18 +942,10 @@ class Path(TikzMeta):
 
 origin = p(0, 0)
 
-bdp_config = {
-              'grid'            : 10,
-              'origin_offset'   : p(1000, 1000)
-              }
-
-# block = Block()
-
-# text = block(
-#             border = False
-#             )
-
+fig = Figure()
 shape = Shape()
 text = Text()
 block = Block()
 path = Path()
+
+
