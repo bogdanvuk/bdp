@@ -43,47 +43,14 @@ def render_tikz(file_name, bdp_gen_path, search_paths=[]):
         return
 
     tex_name = os.path.splitext(os.path.basename(bdp_file_name))[0] + '.tex'
-
-    # bdp_file_name = "/home/personal/doktorat/prj/eclipse_wspace/bdp_test/test"
-
-    # bdp_file_name = "dt_memory_arch"
-
-    # bdp_mod = importlib.import_module(bdp_file_name)
-
-
-    tikz_prolog = r"""
-    \documentclass{standalone}
-
-    \usepackage{tikz}
-    \usetikzlibrary{shapes,arrows,decorations.pathreplacing}
-
-    \begin{document}
-    \pagestyle{empty}
-    \begin{tikzpicture}[yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}]
-
-    """
-
-    tikz_epilog = r"""
-    \end{tikzpicture}
-
-
-    \end{document}
-    """
-
-#     os.chdir(bdp_gen_path)
+   
     print(bdp_gen_path)
     if not os.path.exists(bdp_gen_path):
         print("Does not exist!")
 
     tex_file = os.path.join(bdp_gen_path, tex_name)
     with open(tex_file, 'w') as f:
-        f.write(tikz_prolog)
-
-        for obj in bdp_mod.obj_list:
-            f.write(obj)
-    #         f.write(obj.render_tikz())
-
-        f.write(tikz_epilog)
+        f.write(str(bdp_mod.fig))
 
     return tex_file
 

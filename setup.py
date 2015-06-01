@@ -8,13 +8,13 @@ This package contains the bdpfigure Sphinx extension.
 .. add description here ..
 '''
 
-requires = ['Sphinx>=0.6', 'PyMemoize>=1.0']
+requires = []
 
 setup(
     name='bdp',
     version='0.1',
-    url='https://github.com/bogdanvuk/rst',
-    download_url = 'https://github.com/bogdanvuk/rst/tarball/0.0.1',
+    url='https://github.com/bogdanvuk/bdp',
+    download_url = 'https://github.com/bogdanvuk/bdp/tarball/0.0.1',
     license='BSD',
     author='Bogdan Vukobratovic',
     author_email='bogdan.vukobratovic@gmail.com',
