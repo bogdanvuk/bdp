@@ -8,4 +8,4 @@ except ImportError:
     version = None
 
 from bdp.point import Point as p    
-from bdp.node import block, fig
+from bdp.node import block, fig, prev

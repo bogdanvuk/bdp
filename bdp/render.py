@@ -9,50 +9,29 @@ import bdp.node
 class BdpError(Exception):
     pass
 
-def render_tikz(file_name, bdp_gen_path, search_paths=[]):
+def render_tikz(fin, fout=None, outdir=None):
     found = False
     importlib.reload(bdp.node)
-    try:
-        bdp_file_name = file_name
-        print(bdp_file_name)
-        loader = importlib.machinery.SourceFileLoader("", bdp_file_name)
-        bdp_mod = loader.load_module()
-        found = True
-    except FileNotFoundError:
 
-        print(search_paths)
+    loader = importlib.machinery.SourceFileLoader("", fin)
+    bdp_mod = loader.load_module()
 
-        if isinstance(search_paths, str):
-            bdp_file_name = os.path.join(search_paths, file_name)
-            loader = importlib.machinery.SourceFileLoader("", bdp_file_name)
-            bdp_mod = loader.load_module()
-        else:
-            for s in search_paths:
-                try:
-                    bdp_file_name = os.path.join(s, file_name)
-                    print(bdp_file_name)
-                    loader = importlib.machinery.SourceFileLoader("tmp", bdp_file_name)
-                    bdp_mod = loader.load_module("tmp")
-                    found = True
-                    break
-                except FileNotFoundError as e:
-                    print(e)
-                    pass
+    if fout is None:
+        fout = os.path.splitext(os.path.basename(fin))[0] + '.tex'
 
-    if not found:
-        return
+    if outdir is None:
+        outdir = os.path.dirname(fout)
+        
+    if not outdir:
+        outdir = os.path.dirname(fin)
+        
+    if os.path.dirname(fout) == '':
+        fout = os.path.join(outdir, fout)
 
-    tex_name = os.path.splitext(os.path.basename(bdp_file_name))[0] + '.tex'
-   
-    print(bdp_gen_path)
-    if not os.path.exists(bdp_gen_path):
-        print("Does not exist!")
-
-    tex_file = os.path.join(bdp_gen_path, tex_name)
-    with open(tex_file, 'w') as f:
+    with open(fout, 'w') as f:
         f.write(str(bdp_mod.fig))
 
-    return tex_file
+    return fout
 
 def shell(cmdline, input=None, env=None, stderr=PIPE):
     try:
@@ -78,11 +57,11 @@ def convert_pdf(tex_file):
           "-halt-on-error", tex_file], stderr=STDOUT)
 
 def pdf2png(pdf_file, resolution=256):
-    
+
     outdir = os.path.dirname(pdf_file)
     basename = os.path.basename(pdf_file)
     stem = os.path.splitext(basename)[0]
-        
+
     cmdline = ["pdftoppm",
                '-r', str(resolution),
                '-f', '1', '-l', '1',
@@ -92,7 +71,7 @@ def pdf2png(pdf_file, resolution=256):
     ppmfile = os.path.join(outdir, stem)+'-1.ppm'
     if not os.path.exists(ppmfile):
         raise BdpError("file not found: %s" % ppmfile)
-     
+
     data = open(ppmfile, 'rb').read()
     cmdline = ['pnmcrop']
     data = shell(cmdline, data)
@@ -101,11 +80,27 @@ def pdf2png(pdf_file, resolution=256):
     cmdline = ['pnmtopng',
                '-transparent', 'white',
                '-compression', '9']
-     
+
     data = shell(cmdline, data)
-     
+
     open(os.path.join(outdir, stem + '.png'), 'wb').write(data)
 
+def render(fin, fout=None, outdir=None, options={}):
+    
+    if fout is not None:
+        fout_tex = os.path.splitext(fout)[0] + '.tex'
+    else:
+        fout_tex = None
+        
+    tex_file = render_tikz(fin, fout_tex, outdir)
+
+    convert_pdf(tex_file)
+
+    if 'c' in options:
+        if options['r'] is not None:
+            pdf2png(os.path.splitext(tex_file)[0] + '.pdf', resolution=options['r'])
+        else:
+            pdf2png(os.path.splitext(tex_file)[0] + '.pdf')
 
 def main(arv=sys.argv):
 
@@ -115,7 +110,12 @@ def main(arv=sys.argv):
 
     parser.add_argument('input', metavar='input',
                         help="Input BDP file")
-    parser.add_argument('outdir', metavar='outdir',
+    
+    parser.add_argument('output', metavar='outdir',
+                        help="Output file")
+    
+    parser.add_argument('-d', '--outdir',
+                        default = '',
                         help="Output directory")
 
     parser.add_argument('-c', action='store_true')
@@ -123,15 +123,9 @@ def main(arv=sys.argv):
 
     opts = parser.parse_args(sys.argv[1:])
 
-    tex_file = render_tikz(opts.input, opts.outdir)
-
-    convert_pdf(tex_file)
+    options = opts.__dict__
     
-    if opts.c:
-        if opts.r is not None:
-            pdf2png(os.path.splitext(tex_file)[0] + '.pdf', resolution=opts.r)
-        else:
-            pdf2png(os.path.splitext(tex_file)[0] + '.pdf')
+    render(opts.input, opts.output, None, options)
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

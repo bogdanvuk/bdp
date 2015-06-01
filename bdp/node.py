@@ -60,9 +60,12 @@ obj_list = []
 tmpl_list = [None]
 # tmpl_cur = None
 
-def prev(i=0):
-    i = -(i+1)
-    return tmpl_list[i]
+# def prev(i=0):
+#     i = -(i+1)
+#     return tmpl_list[i]
+
+def prev(*args, **kwargs):
+    return tmpl_list[-1](*args, **kwargs)
 
 
 class TemplatedObjects(object):
@@ -583,11 +586,17 @@ class Shape(Element):
         self.p = shape.p - (0, self.size[1] + pos*shape.node_sep[1])
         return self
 
-    def right(self, shape, pos=1):
+    def right(self, shape=None, pos=1):
+        if shape is None:
+            shape = self
+            
         self.p = shape.p + (shape.size[0] + pos*shape.node_sep[0], 0)
         return self
 
-    def left(self, shape, pos=1):
+    def left(self, shape=None, pos=1):
+        if shape is None:
+            shape = self
+            
         self.p = shape.p - (self.size[0] + pos*shape.node_sep[0], 0)
         return self
 
@@ -855,10 +864,18 @@ class Block(Shape):
             if align[0] == 'n':
                 yallign_self = self.wy()
                 yallign_text = self.text.wy()
+            elif align[0] == 'c':    
+                self.text.size = self.size
+                yallign_self = self.wy()
+                yallign_text = self.text.wy()
 
             if align[1] == 'e':
                 xallign_self = self.nx(1.0)
-                xallign_text = self.nx(1.0)
+                xallign_text = self.text.nx(1.0)
+            elif align[1] == 'c':    
+                self.text.size = self.size
+                xallign_self = self.nx(0.0)
+                xallign_text = self.text.nx(0.0)
                 
             self.text.alignx(xallign_self, xallign_text)
             self.text.aligny(yallign_self, yallign_text)
@@ -946,6 +963,10 @@ class Block(Shape):
                     size[i] = text_size[i]
 
         return size
+    
+    @size.setter
+    def size(self, value):
+        super(self.__class__, self.__class__).size.__set__(self, value)
 
     def __init__(self, text_t=None, size=None, **kwargs):
 
