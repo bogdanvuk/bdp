@@ -30,7 +30,7 @@ import shlex
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['bdp.sphinxext.bdpfigure', 'sphinx.ext.numfig']
+extensions = ['sphinx.ext.numfig']
 
 numfig_format = {'figure': 'Figure %s',
                  'table': 'Table %s',
