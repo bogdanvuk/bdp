@@ -6,34 +6,114 @@ Created on Mar 31, 2015
 from string import Template
 import copy
 import math
-from tempfile import NamedTemporaryFile
+import tempfile
 import os
 from cgitb import text
 import subprocess
+import pexpect
+import sys
 
-from bdp.point import Point as p
+from bdp.point import Point as p, Poff
+import fnmatch
+
+test = r"""
+\documentclass{article}
+\usepackage{tikz}
+\usetikzlibrary{arrows, decorations.markings}
+
+% for double arrows a la chef
+% adapt line thickness and line width, if needed
+\tikzstyle{vecArrow} = [thick, decoration={markings,mark=between positions
+   0.0 and 1.0 step 1.0 with {\arrow[semithick]{open triangle 60}}},
+   double distance=1.4pt, shorten >= 5.5pt, shorten <= 5.5pt,
+   preaction = {decorate},
+   postaction = {draw,line width=1.4pt, white,shorten >= 4.5pt, shorten <= 4.5pt}]
+\tikzstyle{innerWhite} = [semithick, white,line width=1.4pt, shorten >= 4.5pt]
+
+\begin{document}
+
+\begin{tikzpicture}[thick]
+  \node[draw,rectangle] (a) {A};
+  \node[inner sep=0,minimum size=0,right of=a] (k) {}; % invisible node
+  \node[draw,rectangle,right of=k] (b) {B};
+  \node[draw,rectangle,below of=a] (c) {C};
+
+  % 1st pass: draw arrows
+  \draw[vecArrow] (a) to (b);
+  \draw[vecArrow] (k) |- (c);
+
+  % 2nd pass: copy all from 1st pass, and replace vecArrow with innerWhite
+  \draw[innerWhite] (a) to (b);
+  \draw[innerWhite] (k) |- (c);
+
+  % Note: If you have no branches, the 2nd pass is not needed
+\end{tikzpicture}
+
+\end{document}
+"""
 
 class Figure(object):
     grid    = 10
     origin  = p(1000, 1000)
+    package = ['tikz']
+    tikz_library = ['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings']
+    options = 'yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}'
+    tikz_prolog = ''
+#     tikz_prolog = r"""
+# % for double arrows a la chef
+# % adapt line thickness and line width, if needed
+# \tikzstyle{thickarr} = [thick, decoration={markings,mark=at position
+#    1 with {\arrow[semithick]{open triangle 60}}},
+#    double distance=1.4pt, shorten >= 5.5pt,
+#    preaction = {decorate},
+#    postaction = {draw,line width=1.4pt, white,shorten >= 4.5pt}]
+# \tikzstyle{innerWhite} = [semithick, white,line width=1.4pt, shorten >= 4.5pt]
+# """
+#     tikz_prolog = r"""
+#     \tikzset{
+#   double arrow/.style args={#1 colored by #2 and #3}{
+#     -stealth,line width=#1,#2, % first arrow
+#     postaction={draw,-stealth,#3,line width=(#1)/3,
+#                 shorten <=(#1)/3,shorten >=2*(#1)/3}, % second arrow
+#   }
+# }
+# """
     
-    tikz_prolog = r"""
+    tikz_epilog = ''
+    
+    template = Template(r"""
 \documentclass{standalone}
 
-\usepackage{tikz}
-\usetikzlibrary{shapes,arrows,decorations.pathreplacing}
+$packages
+$tikz_libraries 
 
 \begin{document}
 \pagestyle{empty}
-\begin{tikzpicture}[yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}]
-
-    """
-
-    tikz_epilog = r"""
+$tikz_prolog
+\begin{tikzpicture}[$options]
+$tikz
 \end{tikzpicture}
-
+$tikz_epilog
 \end{document}
-    """
+""")
+    
+#     tikz_prolog = r"""
+# \documentclass{standalone}
+# 
+# \usepackage{tikz}
+# \usetikzlibrary{shapes,arrows,decorations.pathreplacing}
+# 
+# \begin{document}
+# \pagestyle{empty}
+# \begin{tikzpicture}[yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}]
+# 
+#     """
+# 
+#     tikz_epilog = r"""
+# \end{tikzpicture}
+# 
+# \end{document}
+#     """
     
     def to_units(self,num):
         return "{0}{1}".format(num*self.grid, "pt")
@@ -45,28 +125,123 @@ class Figure(object):
     def __init__(self):
         self._tikz = ''
         self._preamble = ''
+        self._tmpl = []
     
-    def __lshift__(self, val):
+    def _render_recursive(self, val):
+        self._render_val(val)
+        
+        try:
+            for k in val:
+                self._render_recursive(val[k])
+                
+        except TypeError:
+            pass
+                
+    def _render_val(self, val):
         if hasattr(val, '_render_tikz'):
             self._tikz += val._render_tikz(self) + '\n'
-            tmpl_list.append(val)
+            self._tmpl.append(val)
         else:
-            self._tikz += val  + '\n'
+            self._tikz += str(val)  + '\n'
+    
+    def __lshift__(self, val):
+        self._render_recursive(val)
+        return self
+            
+    def __getitem__(self, val):
+        if isinstance(val, int):
+            return self._tmpl[val]
+        elif isinstance(val, str):
+            match = ''
+            for t in self._tmpl:
+                try:
+                    if fnmatch.fnmatch(t.text.t, val):
+                        return t
+                except AttributeError:
+                    pass
+                
+            raise KeyError
+        else:
+            raise KeyError
+                    
             
     def __str__(self):
-        return self.tikz_prolog + self._tikz.replace('\n', '\n    ') + self.tikz_epilog
+        
+#         return test
+        
+        packages = ''
+        for p in self.package:
+            packages += r'\usepackage{' + p + '}\n'
+
+        tikz_libraries = ''
+        for l in self.tikz_library:
+            tikz_libraries += r'\usetikzlibrary{' + l + '}\n'
+        
+        return self.template.substitute(
+                                        packages = packages,
+                                        tikz_libraries = tikz_libraries,
+                                        tikz_prolog = self.tikz_prolog,
+                                        options = self.options,
+                                        tikz = self._tikz,
+                                        tikz_epilog = self.tikz_epilog
+                                        )
+#         return self.tikz_prolog + self._tikz.replace('\n', '\n    ') + self.tikz_epilog
 
 obj_list = []
-tmpl_list = [None]
-# tmpl_cur = None
+# tmpl_list = [None]
+tmpl_cur = [None]
 
 # def prev(i=0):
 #     i = -(i+1)
 #     return tmpl_list[i]
 
 def prev(*args, **kwargs):
-    return tmpl_list[-1](*args, **kwargs)
+    if not args and not kwargs:
+        return tmpl_cur[0]
+    else:
+        return tmpl_cur[0](*args, **kwargs)
 
+
+class LatexServer(object):
+    latex_preamble = r"""\documentclass{standalone}
+\usepackage{calc}
+\usepackage{tikz}
+\usepackage{makecell}
+
+\newlength\mywidth
+\newlength\myheight
+\newlength\myminx
+\newlength\mymaxx
+\newlength\myminy
+\newlength\mymaxy
+
+\newcommand{\PgfPosition}{%
+    \global\let\myminx=\pgfpositionnodelaterminx%
+    \global\let\mymaxx=\pgfpositionnodelatermaxx%
+    \global\let\myminy=\pgfpositionnodelaterminy%
+    \global\let\mymaxy=\pgfpositionnodelatermaxy%
+}%
+
+\begin{document}
+"""
+    
+    def expect(self, tin, tout):
+        self.proc.send(tin)
+        while (1):
+            line = self.proc.readline()
+#             print(line)
+            if line.startswith(tout):
+                return line
+    
+    def __init__(self):
+#         print('Init!')
+        self.proc = pexpect.spawnu('pdflatex -draftmode -output-directory=' + tempfile.gettempdir(), timeout=0.5)
+        self.proc.expect('enabled.')
+#         print(self.proc.before)
+        self.proc.send(self.latex_preamble)
+
+
+latex_server = LatexServer()
 
 class TemplatedObjects(object):
     _def_settings = {}
@@ -77,30 +252,48 @@ class TemplatedObjects(object):
             return self.__dict__[attr]
         except (KeyError, TypeError):
             try:
+                #if it is not special methods that are required
                 if attr[0] != '_':
-                    return copy.deepcopy(getattr(self._template, attr))
-                else:
-                    raise AttributeError
-            except AttributeError:
-                try:
-                    #if it is not special methods that are required
-                    if attr[0] != '_':
-                        tokens = attr.split('_')
-                        obj = tokens[0]
-                        child_attr = '_'.join(tokens[1:])
-                        if child_attr:
-                            return getattr(getattr(self, obj), child_attr)
-                        else:
-                            raise AttributeError
+                    tokens = attr.split('_')
+                    obj = tokens[0]
+                    child_attr = '_'.join(tokens[1:])
+                    if child_attr:
+                        return getattr(getattr(self, obj), child_attr)
                     else:
                         raise AttributeError
-                except (KeyError, TypeError, AttributeError):
-                    try:
-                        self.__dict__[attr] = copy.deepcopy(self._def_settings[attr])
-                        return self.__dict__[attr]
-                    except KeyError:
-                        raise AttributeError("%r object has no attribute %r" %
-                                            (self.__class__, attr))
+                else:
+                    raise AttributeError
+            except (KeyError, TypeError, AttributeError):
+                raise AttributeError("%r object has no attribute %r" %
+                                        (self.__class__, attr))
+#         try:
+#             return self.__dict__[attr]
+#         except (KeyError, TypeError):
+#             try:
+#                 if attr[0] != '_':
+#                     return copy.deepcopy(getattr(self._template, attr))
+#                 else:
+#                     raise AttributeError
+#             except AttributeError:
+#                 try:
+#                     #if it is not special methods that are required
+#                     if attr[0] != '_':
+#                         tokens = attr.split('_')
+#                         obj = tokens[0]
+#                         child_attr = '_'.join(tokens[1:])
+#                         if child_attr:
+#                             return getattr(getattr(self, obj), child_attr)
+#                         else:
+#                             raise AttributeError
+#                     else:
+#                         raise AttributeError
+#                 except (KeyError, TypeError, AttributeError):
+#                     try:
+#                         self.__dict__[attr] = copy.deepcopy(self._def_settings[attr])
+#                         return self.__dict__[attr]
+#                     except KeyError:
+#                         raise AttributeError("%r object has no attribute %r" %
+#                                             (self.__class__, attr))
             
 #             try:
 #                 if attr[0] != '_':
@@ -180,19 +373,20 @@ class TemplatedObjects(object):
 
         kwargs['template'] = self
 
-        tmpl_cur = self.__class__(*args, **kwargs)
+        tmpl_cur[0] = self.__class__(*args, **kwargs)
 
-        tmpl_list[-1] = tmpl_cur
+#        tmpl_list[-1] = tmpl_cur
 
-        return tmpl_cur
-
-    def copy(self):
-        return self(template=self)
+        return tmpl_cur[0]
 
     def __init__(self, template=None, **kwargs):
-#         if template is not None:
-#             for k,v in template.__dict__.items():
-#                 setattr(self, k, copy.deepcopy(v))
+
+        for k,v in self._def_settings.items():
+            setattr(self, k, copy.deepcopy(v))
+        
+        if template is not None:
+            for k,v in template.__dict__.items():
+                setattr(self, k, copy.deepcopy(v))
 ##             self.__dict__.update(copy.deepcopy(template.__dict__))
         self._template = template
         
@@ -502,14 +696,15 @@ class Element(Node):
 
 class Shape(Element):
 
-#     meta_options = Element.meta_options + ['node_sep', 'conn_sep', 'border', 'anchor']
+#     meta_options = Element.meta_options + ['nodesep', 'conn_sep', 'border', 'anchor']
 
     _def_settings = Element._def_settings.copy()
     _def_settings.update({
-            'border' :  True,
-            'node_sep' : p(1,1),
-#             'conn_sep' : 1,
-            'shape' : 'rectangle'
+            'border'        :  True,
+            'nodesep'       : p(1,1),
+            'group'         : None,
+            'group_margin'  : p(0,0),
+            'shape'         : 'rectangle'
             })
 
     _aliases = Element._aliases.copy()
@@ -517,15 +712,89 @@ class Shape(Element):
                     'border' : 'draw'
                     })
     
-    _tikz_meta_options = Element._tikz_meta_options + ['node_sep']
-
+    _tikz_meta_options = Element._tikz_meta_options + ['nodesep', 'group', 'group_margin']
+    
 #     _tikz_options = Element._tikz_options + ['dotted', 'fill']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        self._child = {}
+        self._child_keys = []
+
+    @property
+    def size(self):
+        if self.group == 'tight':
+            if self._child:
+                cmin = p(float("inf"),float("inf"))
+                cmax = p(float("-inf"),float("-inf"))
+    
+                for k,v in self._child.items():
+                    for i in range(2):
+                        if v.n()[i] < cmin[i]:
+                            cmin[i] = v.n()[i]
+                        
+                        if v.s(1.0)[i] > cmax[i]:
+                            cmax[i] = v.s(1.0)[i]
+        
+                return cmax - cmin + 2*self.group_margin
+            else:
+                return p(0,0)
+        else:
+            return Node.size.__get__(self)
+
+    
+    @size.setter
+    def size(self, value):
+        Node.size.__set__(self, value)
+
+    @property
+    def p(self):
+        if self.group == 'tight' and self._child:
+            cmin = p(float("inf"),float("inf"))
+            if self.group == 'tight':
+                for k,v in self._child.items():
+                    for i in range(2):
+                        if v.n()[i] < cmin[i]:
+                            cmin[i] = v.n()[i]
+    
+            return cmin - self.group_margin
+        else:
+            return self.__getattr__('p')   
+
+    @p.setter
+    def p(self, value):
+        
+        try:
+            pcur = self.__getattr__('p')
+        
+            pdif = p(value) - pcur
+        
+            for _,v in self._child.items():
+                v.p += pdif
+        except AttributeError:
+            pass
+        
+        self.__dict__['p'] = p(value)
+
+    def __getitem__(self, key):
+        return self._child[key]
+    
+    def __setitem__(self, key, val):
+        if key not in self._child:
+            self._child_keys.append(key)
+            
+        self._child[key] = val
+        
+    def __iter__(self):
+        for k in self._child_keys:
+            yield k
 
     def _render_tikz_shape(self, fig=None):
         return self.shape
+
+    def at(self, ind):
+        return self._child[self._child_keys[ind]]
 
     def a(self, angle=0):
         x = self.size[0]/2*math.cos(angle/180 * math.pi)
@@ -582,26 +851,32 @@ class Shape(Element):
         return pos
 
 
-    def over(self, shape, pos=1):
-        self.p = shape.p - (0, self.size[1] + pos*shape.node_sep[1])
+    def over(self, shape=None, pos=1):
+        if shape is None:
+            shape = self
+            
+        self.p = shape.p - (0, self.size[1] + pos*shape.nodesep[1])
         return self
 
     def right(self, shape=None, pos=1):
         if shape is None:
             shape = self
             
-        self.p = shape.p + (shape.size[0] + pos*shape.node_sep[0], 0)
+        self.p = shape.p + (shape.size[0] + pos*shape.nodesep[0], 0)
         return self
 
     def left(self, shape=None, pos=1):
         if shape is None:
             shape = self
             
-        self.p = shape.p - (self.size[0] + pos*shape.node_sep[0], 0)
+        self.p = shape.p - (self.size[0] + pos*shape.nodesep[0], 0)
         return self
 
-    def below(self, shape, pos=1):
-        self.p = shape.p + (0, shape.size[1] + pos*shape.node_sep[1])
+    def below(self, shape=None, pos=1):
+        if shape is None:
+            shape = self
+            
+        self.p = shape.p + (0, shape.size[1] + pos*shape.nodesep[1])
         return self
 
 from os import kill
@@ -699,35 +974,7 @@ class Text(Element):
             self._tikz_meta_options.remove('margin')
             self._size_measure = False
 
-#             latex = Template(r"""\documentclass{article}
-# \begin{document}
-# \newlength\mywidth
-# \newlength\myheight
-# \settowidth{\mywidth}{$text}
-# \settoheight{\myheight}{$text}
-# \typeout{$bdp_console_header\the\mywidth,\the\myheight}
-# \end{document}""")
-            latex = Template(r"""\documentclass{article}
-\usepackage{calc}
-\usepackage{tikz}
-\usepackage{makecell}
-
-\newlength\mywidth
-\newlength\myheight
-\newlength\myminx
-\newlength\mymaxx
-\newlength\myminy
-\newlength\mymaxy
-
-\newcommand{\PgfPosition}{%
-    \global\let\myminx=\pgfpositionnodelaterminx%
-    \global\let\mymaxx=\pgfpositionnodelatermaxx%
-    \global\let\myminy=\pgfpositionnodelaterminy%
-    \global\let\mymaxy=\pgfpositionnodelatermaxy%
-}%
-
-\begin{document}
-\begin{tikzpicture}[every node/.style={inner sep=0,outer sep=0, anchor=center}]
+            latex = Template(r"""\begin{tikzpicture}[every node/.style={inner sep=0,outer sep=0, anchor=center}]
 \pgfpositionnodelater{\PgfPosition}%
 $node
 \setlength{\mywidth}{\mymaxx}%
@@ -736,85 +983,48 @@ $node
 \setlength{\myheight}{\mymaxy}%
 \addtolength{\myheight}{-\myminy}%
 \global\myheight=\myheight
-\end{tikzpicture}
-
 \typeout{$bdp_console_header\the\mywidth,\the\myheight}
-\end{document}""")
+\end{tikzpicture}
+""")
+            tin = latex.substitute(node=text,bdp_console_header=bdp_console_header)
 
-            f = NamedTemporaryFile(delete=False)
-            f.write(latex.substitute(node=text,bdp_console_header=bdp_console_header).encode())
+            line = latex_server.expect(tin, '*' + bdp_console_header)
 
-            temp_dir = os.path.dirname(f.name)
+            line = line.replace('*' + bdp_console_header, '')
+            vals = line.split(',')
 
-            latex_cmd = 'latex ' + f.name + \
-                        ' -draftmode -interaction=errorstopmode' + \
-                        ' -output-directory=' + temp_dir
-
-            f.close()
-
-            try:
-                origWD = os.getcwd() # remember our original working directory
-
-                os.chdir(temp_dir)
-
-#                 ret = subprocess.check_output(tex, shell=True, universal_newlines=True, timeout=1)
-                ret_code,ret,ret_err = run(latex_cmd, shell=True, universal_newlines=True, timeout=1)
-
-                for line in ret.split('\n'):
-                    if line.startswith(bdp_console_header):
-                        line = line.replace(bdp_console_header, '')
-                        vals = line.split(',')
-
-                        for i in range(2):
-                            if size[i] is None:
+            for i in range(2):
+                if size[i] is None:
 #                                 size[0] = math.ceil(from_units(vals[0]) + (2*self.margin[0]))
-                                size[i] = fig.from_units(vals[i]) + (2*self.margin[i])
+                    size[i] = fig.from_units(vals[i]) + (2*self.margin[i])
 
-                                if size[i] == 0:
-                                    size[i] = 1
-
-#                             if size[1] is None:
-# #                                 size[1] = math.ceil(from_units(vals[1]) + (2*self.margin[1]))
-#                                 size[1] = from_units(vals[1]) + (2*self.margin[1])
-#
-#                                 if size[1] == 0:
-#                                     size[1] = 1
-
-                        break
-
-            except subprocess.CalledProcessError as e:
-                print ("Ping stdout output:\n", e.output)
-            finally:
-#                 os.unlink(f.name)
-#                 for f in glob (os.path.join(temp_dir, '*.aux')):
-#                     os.unlink(f)
-#                 for f in glob (os.path.join(temp_dir, '*.dvi')):
-#                     os.unlink(f)
-#                 for f in glob (os.path.join(temp_dir, '*.log')):
-#                     os.unlink(f)
-
-                os.chdir(origWD) # get back to our original working directory
+                    if size[i] == 0:
+                        size[i] = 1
 
             return size
         else:
-            return p(1,1)
+            return p(0,0)
 
     @property
     def size(self):
         try:
-            size = self.__getattr__('size')
+            set_size = self.__getattr__('size')
         except AttributeError:
-            size = p(None,None)
+            set_size = p(None,None)
 
-        if (size[0] is None) or (size[1] is None):
+        if (set_size[0] is None) or (set_size[1] is None):
             # size = self._memo.get('_get_size_from_text', self._get_size_from_text, (), {'size':size}, etag=self.t)
             if self.t in self._memo:
                 size = self._memo[self.t]
             else:
-                size = self._get_size_from_text(size)
+                size = self._get_size_from_text(set_size)
                 self._memo[self.t] = size
+                
+            for i in range(2):
+                if set_size[i] is None:
+                    set_size[i] = size[i]
 
-        return size
+        return set_size
 
     @size.setter
     def size(self, value):
@@ -865,17 +1075,32 @@ class Block(Shape):
                 yallign_self = self.wy()
                 yallign_text = self.text.wy()
             elif align[0] == 'c':    
-                self.text.size = self.size
+                self.text.size[1] = self.size[1]
                 yallign_self = self.wy()
+                yallign_text = self.text.wy()
+            if align[0] == 's':
+                yallign_self = self.wy(1.0)
+                yallign_text = self.text.wy(1.0)
+            elif align[0] == 't':
+                yallign_self = self.wy()
+                yallign_text = self.text.wy(1.0)
+            elif align[0] == 'b':
+                yallign_self = self.wy(1.0)
                 yallign_text = self.text.wy()
 
             if align[1] == 'e':
                 xallign_self = self.nx(1.0)
                 xallign_text = self.text.nx(1.0)
+                self.text.alignment = 'right'
+            if align[1] == 'w':
+                xallign_self = self.nx()
+                xallign_text = self.text.nx()
+                self.text.alignment = 'left'  
             elif align[1] == 'c':    
-                self.text.size = self.size
+                self.text.size[0] = self.size[0]
                 xallign_self = self.nx(0.0)
                 xallign_text = self.text.nx(0.0)
+                self.text.alignment = 'center'
                 
             self.text.alignx(xallign_self, xallign_text)
             self.text.aligny(yallign_self, yallign_text)
@@ -954,9 +1179,13 @@ class Block(Shape):
 
     @property
     def size(self):
-        size = self.__getattr__('size')
+#         size = self.__getattr__('size')
+        size = super(self.__class__, self.__class__).size.__get__(self)
         if (size[0] is None) or (size[1] is None):
-            text_size = self.text.size
+            if self.group == 'tight':
+                text_size = p(0,0)
+            else:
+                text_size = self.text.size
             
             for i in range(2):
                 if size[i] is None:
@@ -1032,15 +1261,14 @@ class Segment(object):
 class Path(TikzMeta):
     _def_settings = TikzMeta._def_settings.copy()
     _def_settings.update({
-                         'def_routing'    : '--',
+                         'routedef'     : '--',
                          'path'         : [(0.0, 0.0)],
-                         'routing'      : [],
-                         'margin'       : [0, 0],
+                         'route'        : [],
                          'smooth'       : False,
                          'draw'         : True
                          })
 
-    _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth']
+    _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth', 'route', 'routedef']
 #     _tikz_options = TikzMeta._tikz_options + ['thick', 'ultra_thick', 'shorten',
 #                                             'double', 'line_width', 'dotted', 
 #                                             'looseness', 'rounded_corners', 
@@ -1049,14 +1277,15 @@ class Path(TikzMeta):
     def _render_tikz_path(self, fig=None):
         path_tikz = []
         
-        for p,r in zip(self.path, self.routing):
+        for p,r in zip(self.path, self.route):
 
             pos = p + fig.origin
             path_str = "(" + fig.to_units(pos[0]) + "," + fig.to_units(pos[1]) + ")"
 
             path_tikz.append(path_str)
             if not self.smooth:
-                path_tikz.append(r)
+                path_tikz.append('--')
+#                 path_tikz.append(r)
 
         if not self.smooth:
             return ' '.join(path_tikz[:-1])
@@ -1095,36 +1324,43 @@ class Path(TikzMeta):
     def c(self):
         return self.pos(0.5)
 
-    def __init__(self, path=None, routing=None, **kwargs):
+    def __init__(self, *path, **kwargs):
         super().__init__(**kwargs)
 
-        if routing is not None:
-            self.routing = routing
+#         if route is not None:
+#             self.route = route
 
-        if path is not None:
-            self.path = path
-#             path_route_list = [itertools.zip_longest(self.path, self.routing, fillvalue=self.def_routing)]
+        self.path = list(path)
+
+        if path:
+            
+#             path_route_list = [itertools.zip_longest(self.path, self.route, fillvalue=self.routedef)]
 
             for i in range(len(self.path)):
-                if i >= len(self.routing):
-                    self.routing.append(self.def_routing)
+                if i >= len(self.route):
+                    self.route.append(self.routedef)
 
+            for i in range(1, len(self.path)):
+                if isinstance(self.path[i], Poff):
+                    self.path[i] = self.path[i-1] + self.path[i]
+                    
             i = 0
             while i < len(self.path) - 1:
                 pos = self.path[i]
                 pos_next = self.path[i+1]
-                route = self.routing[i]
+                    
+                route = self.route[i]
                 if route == '|-':
                     if (pos[1] != pos_next[1]) and (pos[0] != pos_next[0]):
                         self.path.insert(i+1, p(pos[0], pos_next[1]))
-                        self.routing[i] = '--'
-                        self.routing.insert(i+1, '--')
+                        self.route[i] = '--'
+                        self.route.insert(i+1, '--')
                         i+=1
                 elif route == '-|':
                     if (pos[1] != pos_next[1]) and (pos[0] != pos_next[0]):
                         self.path.insert(i+1, p(pos_next[0], pos[1]))
-                        self.routing[i] = '--'
-                        self.routing.insert(i+1, '--')
+                        self.route[i] = '--'
+                        self.route.insert(i+1, '--')
                         i+=1
                 i+=1
 

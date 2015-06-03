@@ -30,7 +30,11 @@ import shlex
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['bdp.sphinxext.bdpfigure']
+extensions = ['bdp.sphinxext.bdpfigure', 'sphinx.ext.numfig']
+
+numfig_format = {'figure': 'Figure %s',
+                 'table': 'Table %s',
+                 'code-block': 'Code %s'}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -213,7 +217,7 @@ latex_elements = {
 #'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-#'preamble': '',
+'preamble': r'\nonstopmode',
 
 # Latex figure (float) alignment
 #'figure_align': 'htbp',
@@ -224,7 +228,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
   (master_doc, 'bdp.tex', 'bdp Documentation',
-   'bvukobratovic', 'manual'),
+   'bvukobratovic', 'howto'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

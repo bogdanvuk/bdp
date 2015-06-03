@@ -47,6 +47,27 @@ class Point(object):
     def __rmul__(self, other):
         return Point(self[0] * other, self[1] * other)
 
+class Poff(Point):
+    pass
+
+class Poffx(Poff):
+    def __init__(self, val):
+        try:
+            val = val[0]
+        except TypeError:
+            pass
+        
+        Poff.__init__(self, (val, 0))
+
+class Poffy(Poff):
+    def __init__(self, val):
+        try:
+            val = val[1]
+        except TypeError:
+            pass
+        
+        Poff.__init__(self, (0, val))
+
 def axis_decode(axis='x'):
 
     def axis_decode_wrap(func):

@@ -14,7 +14,13 @@ def render_tikz(fin, fout=None, outdir=None):
     importlib.reload(bdp.node)
 
     loader = importlib.machinery.SourceFileLoader("", fin)
+    import time
+
+    start = time.time()
+
     bdp_mod = loader.load_module()
+    end = time.time()
+    print ('Elapsed:' + str(end - start))
 
     if fout is None:
         fout = os.path.splitext(os.path.basename(fin))[0] + '.tex'
