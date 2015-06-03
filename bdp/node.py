@@ -413,8 +413,8 @@ class TikzMeta(TemplatedObjects):
                     excluded.add(s)
                     yield s
 
-        if self._template:
-            yield from self._template._options(excluded)
+#         if self._template:
+#             yield from self._template._options(excluded)
 
         for s in self._def_settings:
             if s[0] != '_':
