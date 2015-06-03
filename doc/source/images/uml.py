@@ -2,7 +2,8 @@ from bdp import *
 import inspect
 
 def fill_group(group, fields, template):
-    for name,text in fields: 
+    for name,text in fields:
+        text = text.replace('_', '\_') 
         try:
             group[name] = template(text).align(group.at(-1).s())
         except IndexError:

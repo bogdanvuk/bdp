@@ -56,11 +56,18 @@ def shell(cmdline, input=None, env=None, stderr=PIPE):
 
 def convert_pdf(tex_file):
     from subprocess import call, STDOUT
-    call(["pdflatex",
+    
+    cmd = ["pdflatex",
           "-interaction=nonstopmode",
           "-file-line-error",
-          '-output-directory', os.path.dirname(tex_file),
-          "-halt-on-error", tex_file], stderr=STDOUT)
+          ]
+    
+    if os.path.dirname(tex_file):
+        cmd += ['-output-directory', os.path.dirname(tex_file)]
+        
+    cmd += ["-halt-on-error", tex_file] 
+    
+    call(cmd, stderr=STDOUT)
 
 def pdf2png(pdf_file, resolution=256):
 
