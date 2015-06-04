@@ -49,15 +49,15 @@ Where to start?
 Installation
 ------------
 
-Install SyDPy using pip::
+Install BDP using pip::
     
-    pip install sydpy
+    pip install bdp
 
-Install SyDPy using easy_install::
+Install BDP using easy_install::
     
-    easy_install sydpy
+    easy_install bdp
 
-Install SyDPy from source::
+Install BDP from source::
     
     python setup.py install
 
@@ -69,7 +69,7 @@ Start with the short tutorial :ref:`tutorial`
 Checkout the examples
 ---------------------
 
-Examples are located in the `examples <https://github.com/bogdanvuk/sydpy/tree/master/examples>`_ repository folder.
+Examples are located in the `examples <https://github.com/bogdanvuk/bdp/tree/master/examples>`_ repository folder.
 
 Get involved
 ------------

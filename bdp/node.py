@@ -38,7 +38,7 @@ test = r"""
 
 class Figure(object):
     grid    = 10
-    origin  = p(1000, 1000)
+    origin  = p(0, 0)
     package = ['tikz']
     tikz_library = set(['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings', 'arrows.meta'])
     options = 'yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}'
@@ -100,7 +100,7 @@ $tikz_epilog
 #     """
     
     def to_units(self,num):
-        return "{0}{1}".format(num*self.grid, "pt")
+        return "{0:.2f}{1}".format(num*self.grid, "pt")
     
     def from_units(self, s):
         s = s.replace('pt', '')
@@ -811,7 +811,7 @@ class Shape(Element):
         if self.shape == 'circle':
             r = self.size[0]/2
             x = pos[0] - self.p[0]
-            y = r - math.sqrt(2*r*x - x*x) + self.p[1]
+            y = r - math.sqrt(abs(2*r*x - x*x)) + self.p[1]
             pos[1] = y
 
         return pos
@@ -822,7 +822,7 @@ class Shape(Element):
         if self.shape == 'circle':
             r = self.size[0]/2
             y = pos[1] - self.p[1]
-            x = self.size[0] - (r - math.sqrt(2*r*y - y*y)) + self.p[0]
+            x = self.size[0] - (r - math.sqrt(abs(2*r*y - y*y))) + self.p[0]
             pos[0] = x
 
         return pos
@@ -833,7 +833,7 @@ class Shape(Element):
         if self.shape == 'circle':
             r = self.size[0]/2
             x = pos[0] - self.p[0]
-            y = self.size[1] - (r - math.sqrt(2*r*x - x*x)) + self.p[1]
+            y = self.size[1] - (r - math.sqrt(abs(2*r*x - x*x))) + self.p[1]
             pos[1] = y
 
         return pos
@@ -844,38 +844,38 @@ class Shape(Element):
         if self.shape == 'circle':
             r = self.size[0]/2
             y = pos[1] - self.p[1]
-            x = r - math.sqrt(2*r*y - y*y) + self.p[0]
+            x = r - math.sqrt(abs(2*r*y - y*y)) + self.p[0]
             pos[0] = x
 
         return pos
 
 
-    def over(self, shape=None, pos=1):
+    def over(self, other=None, pos=1):
         if shape is None:
-            shape = self
+            other = self
             
-        self.p = shape.p - (0, self.size[1] + pos*shape.nodesep[1])
+        self.p = other.p - (0, self.size[1] + pos*other.nodesep[1])
         return self
 
-    def right(self, shape=None, pos=1):
+    def right(self, other=None, pos=1):
         if shape is None:
-            shape = self
+            other = self
             
-        self.p = shape.p + (shape.size[0] + pos*shape.nodesep[0], 0)
+        self.p = other.p + (other.size[0] + pos*other.nodesep[0], 0)
         return self
 
-    def left(self, shape=None, pos=1):
+    def left(self, other=None, pos=1):
         if shape is None:
-            shape = self
+            other = self
             
-        self.p = shape.p - (self.size[0] + pos*shape.nodesep[0], 0)
+        self.p = other.p - (self.size[0] + pos*other.nodesep[0], 0)
         return self
 
-    def below(self, shape=None, pos=1):
+    def below(self, other=None, pos=1):
         if shape is None:
-            shape = self
+            other = self
             
-        self.p = shape.p + (0, shape.size[1] + pos*shape.nodesep[1])
+        self.p = other.p + (0, other.size[1] + pos*other.nodesep[1])
         return self
 
 from os import kill
@@ -1226,9 +1226,6 @@ class ArrowCap(Instance):
     
     _tikz_len_measures = Instance._tikz_len_measures + ['length', 'width']
     
-    def _render_tikz_color(self, fig=None):
-        return self.color
-
 cap = ArrowCap()
 
 class Segment(object):
@@ -1336,9 +1333,6 @@ class Path(TikzMeta):
             return ' '.join(["\\path ", options, path, ";\n"])
         else:
             return ' '.join(["\\draw ", options, 'plot [smooth]', 'coordinates {', path, "};\n"])
-
-    def _render_tikz_color(self, fig=None):
-        return self.color
 
     def _render_tikz(self, fig=None):
         tex = self._render_tikz_run(fig)

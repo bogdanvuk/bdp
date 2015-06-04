@@ -19,7 +19,7 @@ def uml_for_obj(obj, parent=object):
     
     # populate BDP blocks
     uml = block(r'\textbf{' + obj.__class__.__name__ + '}', alignment='tc', border=False, group='tight')
-    field = block(size=(6,None), alignment='cw', border=False, text_margin=(0.2,0.1))
+    field = block(size=(7,None), alignment='cw', border=False, text_margin=(0.2,0.1))
 
     uml['attrs'] = block(group='tight').align(uml.n())
     fill_group(uml['attrs'], attrs, field)
