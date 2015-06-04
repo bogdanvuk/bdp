@@ -19,36 +19,20 @@ import fnmatch
 test = r"""
 \documentclass{article}
 \usepackage{tikz}
-\usetikzlibrary{arrows, decorations.markings}
-
-% for double arrows a la chef
-% adapt line thickness and line width, if needed
-\tikzstyle{vecArrow} = [thick, decoration={markings,mark=between positions
-   0.0 and 1.0 step 1.0 with {\arrow[semithick]{open triangle 60}}},
-   double distance=1.4pt, shorten >= 5.5pt, shorten <= 5.5pt,
-   preaction = {decorate},
-   postaction = {draw,line width=1.4pt, white,shorten >= 4.5pt, shorten <= 4.5pt}]
-\tikzstyle{innerWhite} = [semithick, white,line width=1.4pt, shorten >= 4.5pt]
-
+\usetikzlibrary{arrows.meta}
 \begin{document}
 
-\begin{tikzpicture}[thick]
-  \node[draw,rectangle] (a) {A};
-  \node[inner sep=0,minimum size=0,right of=a] (k) {}; % invisible node
-  \node[draw,rectangle,right of=k] (b) {B};
-  \node[draw,rectangle,below of=a] (c) {C};
-
-  % 1st pass: draw arrows
-  \draw[vecArrow] (a) to (b);
-  \draw[vecArrow] (k) |- (c);
-
-  % 2nd pass: copy all from 1st pass, and replace vecArrow with innerWhite
-  \draw[innerWhite] (a) to (b);
-  \draw[innerWhite] (k) |- (c);
-
-  % Note: If you have no branches, the 2nd pass is not needed
+\begin{tikzpicture}
+\draw[black,step=1cm,thin] (0,0) grid (6,6);
+\draw[-Latex[red,length=5mm,width=2mm],semithick] (0,1) -- (6,1);
+\draw[-{Latex[red,length=5mm,width=2mm,angle'=90]},semithick] (0,1) -- (5,1);
+\draw[-{Latex[red,length=5mm,width=2mm,angle'=45,open]},semithick] (0,1) -- (4,1);
+\draw[-{Latex[red,length=5mm,width=2mm, angle=60:10pt]},semithick] (0,1) -- (3,1);
+\draw[-{Stealth[scale=1.3,angle'=45]},semithick] (0,2) -- (6,2);
+\draw[-{Stealth[scale=1.3,angle'=90]},semithick] (0,2) -- (5,2);
+\draw[-{Stealth[scale=1.3,angle'=45,open]},semithick] (0,2) -- (4,2);
+\draw[-{Stealth[scale=1.3,inset=1pt, angle=90:10pt]},semithick] (0,2) -- (3,2);
 \end{tikzpicture}
-
 \end{document}
 """
 
@@ -56,7 +40,7 @@ class Figure(object):
     grid    = 10
     origin  = p(1000, 1000)
     package = ['tikz']
-    tikz_library = ['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings']
+    tikz_library = set(['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings', 'arrows.meta'])
     options = 'yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}'
     tikz_prolog = ''
 #     tikz_prolog = r"""
@@ -264,6 +248,7 @@ class TemplatedObjects(object):
                 else:
                     raise AttributeError
             except (KeyError, TypeError, AttributeError):
+#                 raise AttributeError
                 raise AttributeError("%r object has no attribute %r" %
                                         (self.__class__, attr))
 #         try:
@@ -398,6 +383,7 @@ class TemplatedObjects(object):
 class TikzMeta(TemplatedObjects):
 
     _tikz_meta_options = []
+    _tikz_len_measures = []
 #     _tikz_options = []
     _aliases = {}
 
@@ -439,9 +425,22 @@ class TikzMeta(TemplatedObjects):
                 if val is True:
                     options.append(s.replace('_', ' '))
                 elif val is not False:
+                    if s in self._tikz_len_measures:
+                        val = fig.to_units(val)
+                        
                     options.append(s.replace('_', ' ') + '=' + str(val))
 
         return ','.join(options)
+
+class Instance(TikzMeta):
+    _tikz_meta_options = TikzMeta._tikz_meta_options +  ['type']
+    
+    def _render_tikz(self, fig=None):
+        options = self._render_tikz_options(fig)
+        if options:
+            options = "[{0}]".format(options)
+            
+        return self.type + options 
 
 class Node(TikzMeta):
     '''
@@ -1219,6 +1218,19 @@ class Block(Shape):
         for k,v in text_args_dict.items():
             setattr(self.text, k, v)
 
+class ArrowCap(Instance):
+    _def_settings = Instance._def_settings.copy()
+    _def_settings.update({
+                        'type'          :  'Latex',
+                        })
+    
+    _tikz_len_measures = Instance._tikz_len_measures + ['length', 'width']
+    
+    def _render_tikz_color(self, fig=None):
+        return self.color
+
+cap = ArrowCap()
+
 class Segment(object):
 
     def _seglen(self, p1, p2):
@@ -1265,10 +1277,13 @@ class Path(TikzMeta):
                          'path'         : [(0.0, 0.0)],
                          'route'        : [],
                          'smooth'       : False,
-                         'draw'         : True
+                         'draw'         : True,
+                         'double'       : False,
+                         'border_width' : 0.1,
                          })
 
-    _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth', 'route', 'routedef']
+    _tikz_len_measures = TikzMeta._tikz_len_measures + ['line_width']
+    _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth', 'route', 'routedef', 'double', 'border_width']
 #     _tikz_options = TikzMeta._tikz_options + ['thick', 'ultra_thick', 'shorten',
 #                                             'double', 'line_width', 'dotted', 
 #                                             'looseness', 'rounded_corners', 
@@ -1296,10 +1311,20 @@ class Path(TikzMeta):
         return 'shorten <=' + fig.to_units(self.shorten[0]) + ',shorten >=' + fig.to_units(self.shorten[1])
 
     def _render_tikz_style(self, fig=None):
-        return self.style
+        
+        if isinstance(self.style, str):
+            return self.style
+        else:
+            cap = []
+            for i in range(2):
+                try:
+                    cap.append('{' + self.style[i]._render_tikz(fig) + '}')
+                except AttributeError:
+                    cap.append(str(self.style[i]))
 
-    def _render_tikz(self, fig=None):
+            return '{0}-{1}'.format(cap[0], cap[1])
 
+    def _render_tikz_run(self, fig=None):
         options = self._render_tikz_options(fig)
 
         if options:
@@ -1312,6 +1337,34 @@ class Path(TikzMeta):
         else:
             return ' '.join(["\\draw ", options, 'plot [smooth]', 'coordinates {', path, "};\n"])
 
+    def _render_tikz_color(self, fig=None):
+        return self.color
+
+    def _render_tikz(self, fig=None):
+        tex = self._render_tikz_run(fig)
+        
+        if self.double:
+            w = self.border_width
+
+            if not hasattr(self, 'shorten'):
+                self.shorten = p(0,0)
+            
+            self.shorten = 1.5*p(w,w) + self.shorten
+            self.line_width -= w
+            self.color = 'white'
+            
+            for i in range(2):
+                try:
+                    self.style[i].length -= w
+                    self.style[i].width -= w
+                    self.style[i].color = 'white'
+                except (AttributeError, TypeError):
+                    self.shorten[i] -= 0.5*w
+
+            tex += '\n' + self._render_tikz_run(fig)
+            
+        return tex
+        
     def __getitem__(self, key):
         if isinstance(key, slice):
             return Segment(key, self)
