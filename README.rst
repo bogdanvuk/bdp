@@ -7,14 +7,40 @@ BDP (Block Diagrams in Python) aims to become a Python fronted for `TikZ <http:/
 .. _fig-bdp-toolchain:
 
 .. figure:: doc/source/images/compile_process.png
-    :width: 60%
-
-    BDP example: BDP compilation process
+    :width: 40%
 
 Figure can be rendered with the following Python code:
 
-.. literalinclude:: doc/source/images/compile_process.py
-    :caption: BDP description of the compilation process diagram.
+.. code-block:: python
+
+    from bdp import *
+    
+    block.size=(6,3)
+    block.nodesep=(3,3)
+    
+    BDP = block(r"BDP", alignment='nw', group='tight', group_margin=p(1,1.5), dashed=True)
+    fig << block(r"Python \\ Description")
+    BDP['tikz'] = prev(r"TikZ \\ Renderer").right()
+    BDP['pdf'] = prev(r"PDF \\ Renderer").below()
+    BDP['png'] = prev(r"PNG \\ Renderer").below()
+    fig << prev(r"TeX Live", size=(6,9)).right(BDP['tikz'])
+    fig << block(r"pdftoppm \\ pnmtopng").below(fig['Te*'])
+    
+    fig << BDP
+    
+    fig << path(fig['Pyt*'].e(0.5), BDP['tikz'].w(0.5), style='->')
+    fig << path(fig['Tik*'].s(0.5), fig['PDF*'].n(0.5), style='->')
+    fig << text('TeX').align(fig[-1].pos(0.5), prev().w(0.5))
+    
+    fig << path(fig['PDF*'].s(0.5), fig['PNG*'].n(0.5), style='->')
+    fig << text('PDF').align(fig[-1].pos(0.5), prev().w(0.5))
+    
+    fig << path(fig['PNG*'].s(0.5), poffy(3), style='->')
+    fig << text('PNG').align(fig[-1].pos(0.9), prev().w(0.5))
+            
+    fig << path(BDP['tikz'].e(0.5), poffx(3), style='<->')
+    fig << path(fig['PDF*'].e(0.5), poffx(3), style='<->')
+    fig << path(fig['PNG*'].e(0.5), poffx(3), style='<->')
 
 Why BDP?
 --------
@@ -36,12 +62,67 @@ BDP package comprises:
 - Shell entry point for rendering BDP images from command line
 - Sphinx extensions for embedding BDP images into the Sphinx documents
 
-.. _fig-uml:
+More complex example with Python programming involved is shown in the figure below.
 
-.. figure:: doc/source/images/uml.png
-    :width: 70%
+.. image:: doc/source/images/uml.png
 
-    More complex example with Python programming involved
+    Figure can be rendered with the following Python code:
+
+.. code-block:: python
+
+    from bdp import *
+    import inspect
+    
+    def fill_group(group, fields, template):
+        for name,text in fields:
+            text = text.replace('_', '\_') 
+            try:
+                group[name] = template(text).align(group.at(-1).s())
+            except IndexError:
+                group[name] = template(text).align(group.n())
+        
+    def uml_for_obj(obj, parent=object):
+        
+        # extract methods and attributes for diagram
+        attrs = [(k, '+' + k) for k in sorted(obj.__dict__) if (k[0] != '_') and (not hasattr(parent, k))]
+        methods = [(k, '+' + k[0] + '()')
+                        for k in inspect.getmembers(obj, predicate=inspect.ismethod)
+                            if (k[0][0] != '_') and (not hasattr(parent, k[0]))]
+        
+        # populate BDP blocks
+        uml = block(r'\textbf{' + obj.__class__.__name__ + '}', alignment='tc', border=False, group='tight')
+        field = block(size=(7,None), alignment='cw', border=False, text_margin=(0.2,0.1))
+    
+        uml['attrs'] = block(group='tight').align(uml.n())
+        fill_group(uml['attrs'], attrs, field)
+        
+        uml['methods'] = block(group='tight').align(uml['attrs'].s())
+        fill_group(uml['methods'], methods, field)
+    
+        return uml
+    
+    block.nodesep = (4,2)
+    
+    # generate UML components
+    element_uml = uml_for_obj(Element(), Node)
+    shape_uml = uml_for_obj(shape, Element())
+    block_uml = uml_for_obj(block, shape)
+    text_uml = uml_for_obj(text, Element())
+    
+    # organize components in the diagram 
+    shape_uml.right(element_uml)
+    text_uml.below(shape_uml)
+    block_uml.right(text_uml).aligny(midy(text_uml.n(), shape_uml.n()))
+    
+    # render the components
+    fig << element_uml << shape_uml << block_uml << text_uml
+    
+    # generate and render the wiring
+    fig << path(text_uml.w(0.5), element_uml.e(0.6), style='-open triangle 45')
+    fig << path(shape_uml.w(0.5), element_uml.e(0.4), style='-open triangle 45')
+    fig << path(block_uml.w(0.5), shape_uml.e(0.4), style='-open triangle 45')
+    fig << path(block_uml['attrs']['text'].e(0.5), poff(1,0), text_uml.e(0.5), style='open diamond-', routedef='|-')
+
 
 Where to start?
 ===============
