@@ -8,13 +8,8 @@ BDP (Block Diagrams in Python) aims to become a Python fronted for `TikZ <http:/
 
 .. figure:: images/compile_process.png
     :width: 60%
-    
-    BDP example: BDP compilation process
 
-Figure can be rendered with the following Python code:
-
-.. literalinclude:: images/compile_process.py
-    :caption: BDP description of the compilation process diagram.
+Figure can be rendered with the :ref:`Python code <fig-compile-process>` provided below.
 
 Why BDP?
 --------
@@ -36,12 +31,14 @@ BDP package comprises:
 - Shell entry point for rendering BDP images from command line
 - Sphinx extensions for embedding BDP images into the Sphinx documents
 
+Image below is a more complex example, which shows how power of Python programming can be used to generate diagrams with BDP. Image shows an UML-like diagram of few major BDP templates.
+
 .. _fig-uml:
 
 .. figure:: images/uml.png
     :width: 70%
     
-    More complex example with Python programming involved
+Figure can be rendered with the :ref:`Python code <fig-uml-source>` provided below.
 
 Where to start?
 ===============
@@ -76,17 +73,23 @@ Get involved
 
 Pull your copy from `github repository <https://github.com/bogdanvuk/bdp>`_
 
-Contents:
+Source codes for the examples
+=============================
+
+.. _fig-compile-process:
+
+.. literalinclude:: images/compile_process.py
+    :caption: BDP description of the compilation process diagram.
+    
+.. _fig-uml-source:
+
+.. literalinclude:: images/uml.py
+    :caption: UML-like diagram of few major BDP templates.    
+
+Contents
+========
 
 .. toctree::
    :maxdepth: 2
    
    tutorial
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

@@ -855,28 +855,28 @@ class Shape(Element):
 
 
     def over(self, other=None, pos=1):
-        if shape is None:
+        if other is None:
             other = self
             
         self.p = other.p - (0, self.size[1] + pos*other.nodesep[1])
         return self
 
     def right(self, other=None, pos=1):
-        if shape is None:
+        if other is None:
             other = self
             
         self.p = other.p + (other.size[0] + pos*other.nodesep[0], 0)
         return self
 
     def left(self, other=None, pos=1):
-        if shape is None:
+        if other is None:
             other = self
             
         self.p = other.p - (self.size[0] + pos*other.nodesep[0], 0)
         return self
 
     def below(self, other=None, pos=1):
-        if shape is None:
+        if other is None:
             other = self
             
         self.p = other.p + (0, other.size[1] + pos*other.nodesep[1])
@@ -1230,6 +1230,8 @@ class ArrowCap(Instance):
     
     _tikz_len_measures = Instance._tikz_len_measures + ['length', 'width']
     
+    _tikz_meta_options = Instance._tikz_meta_options + ['fill_color']
+    
     def _render_tikz(self, fig=None):
         fig.tikz_library.add('arrows.meta')
         return super()._render_tikz(fig)
@@ -1285,10 +1287,13 @@ class Path(TikzMeta):
                          'draw'         : True,
                          'double'       : False,
                          'border_width' : 0.1,
+                         'fill_color'   : 'white'
                          })
 
     _tikz_len_measures = TikzMeta._tikz_len_measures + ['line_width']
-    _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth', 'route', 'routedef', 'double', 'border_width']
+    _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth', 'route', 
+                                                        'routedef', 'double', 'border_width',
+                                                        'fill_color']
 #     _tikz_options = TikzMeta._tikz_options + ['thick', 'ultra_thick', 'shorten',
 #                                             'double', 'line_width', 'dotted', 
 #                                             'looseness', 'rounded_corners', 
@@ -1346,28 +1351,38 @@ class Path(TikzMeta):
         tex = self._render_tikz_run(fig)
         
         if self.double:
-            w = self.border_width
+            self_cpy = copy.deepcopy(self)
+            w = self_cpy.border_width
 
             if not hasattr(self, 'shorten'):
-                self.shorten = p(0,0)
+                self_cpy.shorten = p(0,0)
             
 #             self.shorten = 1.5*p(w,w) + self.shorten
 #             self.line_width -= w
-            self.shorten = p(w,w) + self.shorten
-            self.line_width -= w
-            self.color = 'white'
+            self_cpy.shorten = 0.5*p(w,w) + self_cpy.shorten
+            self_cpy.line_width -= w
+            self_cpy.color = self_cpy.fill_color
+            
+            if not isinstance(self_cpy.style, str):
+                self_cpy.style = [copy.deepcopy(self_cpy.style[0]), copy.deepcopy(self_cpy.style[1])]
             
             for i in range(2):
                 try:
-                    self.style[i].length -= 1.5*w
-                    self.style[i].width -= 2*w
-#                     self.style[i].length -= w
-#                     self.style[i].width -= w
-                    self.style[i].color = 'white'
+                    self_cpy.style[i].length -= 2*w
+                    self_cpy.style[i].width -= 2*w
+                    
+#                     self_cpy.style[i].length -= w
+#                     self_cpy.style[i].width -= w
+                    try:
+                        self_cpy.style[i].color = self_cpy.style[i].fill_color
+                    except AttributeError:
+                        self_cpy.style[i].color = self_cpy.fill_color
+                    self_cpy.shorten[i] += w
                 except (AttributeError, TypeError):
-                    self.shorten[i] -= 0.5*w
+#                     self.shorten[i] -= 1.5*w
+                    pass
 
-            tex += '\n' + self._render_tikz_run(fig)
+            tex += '\n' + self_cpy._render_tikz_run(fig)
             
         return tex
         
