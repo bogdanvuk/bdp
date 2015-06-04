@@ -1,1 +1,5 @@
-/images/
+*.aux
+*.log
+*.pdf
+*.tex
+*.ppm
