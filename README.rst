@@ -64,7 +64,7 @@ BDP package comprises:
 
 More complex example with Python programming involved is shown in the figure below.
 
-.. image:: doc/source/images/uml.png
+.. figure:: doc/source/images/uml.png
 
     Figure can be rendered with the following Python code:
 
