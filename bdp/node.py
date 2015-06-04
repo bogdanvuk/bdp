@@ -38,9 +38,9 @@ test = r"""
 
 class Figure(object):
     grid    = 10
-    origin  = p(0, 0)
-    package = ['tikz']
-    tikz_library = set(['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings', 'arrows.meta'])
+    origin  = p(1000, 1000)
+    package = set(['tikz'])
+    tikz_library = set(['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings'])
     options = 'yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}'
     tikz_prolog = ''
 #     tikz_prolog = r"""
@@ -139,10 +139,14 @@ $tikz_epilog
             match = ''
             for t in self._tmpl:
                 try:
-                    if fnmatch.fnmatch(t.text.t, val):
+                    if fnmatch.fnmatch(t.t, val):
                         return t
                 except AttributeError:
-                    pass
+                    try:
+                        if fnmatch.fnmatch(t.text.t, val):
+                            return t
+                    except AttributeError:
+                        pass
                 
             raise KeyError
         else:
@@ -1226,6 +1230,10 @@ class ArrowCap(Instance):
     
     _tikz_len_measures = Instance._tikz_len_measures + ['length', 'width']
     
+    def _render_tikz(self, fig=None):
+        fig.tikz_library.add('arrows.meta')
+        return super()._render_tikz(fig)
+    
 cap = ArrowCap()
 
 class Segment(object):
@@ -1343,14 +1351,18 @@ class Path(TikzMeta):
             if not hasattr(self, 'shorten'):
                 self.shorten = p(0,0)
             
-            self.shorten = 1.5*p(w,w) + self.shorten
+#             self.shorten = 1.5*p(w,w) + self.shorten
+#             self.line_width -= w
+            self.shorten = p(w,w) + self.shorten
             self.line_width -= w
             self.color = 'white'
             
             for i in range(2):
                 try:
-                    self.style[i].length -= w
-                    self.style[i].width -= w
+                    self.style[i].length -= 1.5*w
+                    self.style[i].width -= 2*w
+#                     self.style[i].length -= w
+#                     self.style[i].width -= w
                     self.style[i].color = 'white'
                 except (AttributeError, TypeError):
                     self.shorten[i] -= 0.5*w

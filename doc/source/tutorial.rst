@@ -24,7 +24,7 @@ The *block* and templates derived from it, render to two *node* TikZ elements, o
 .. list-table::
    :widths: 17 22 30
    :header-rows: 1
-   
+
    * - *node* option form
      - Corresponding BDP template setting
      - Description
@@ -43,7 +43,7 @@ Some template attributes, however do not translate directly to the TikZ equivale
 .. list-table::
    :widths: 10 20 20
    :header-rows: 1
-   
+
    * - Attribute
      - TikZ equivalent option
      - Description
@@ -59,7 +59,7 @@ Some template attributes, however do not translate directly to the TikZ equivale
    * - border
      - draw
      - Determines whether the block template border is drawn
-    
+
 
 Template *a_template* is rendered to the following two TikZ elements by the rules given above:
 
@@ -67,7 +67,7 @@ Template *a_template* is rendered to the following two TikZ elements by the rule
 
    \node at (20.71pt, 6.47pt) [draw,minimum width=41.42pt,minimum height=12.94pt,color=red,rectangle] {} ;
    \node at (20.71pt, 6.47pt) [align=center,text width=35.42pt,minimum width=41.42pt,minimum height=12.94pt] {A Block} ;
-   
+
 Block relative position
 -----------------------
 
@@ -82,18 +82,18 @@ Resulting in:
 There are several helper methods used to position the blocks relatively to one another in diagram. The methods *over*, *right*, *left* and *below* all have the same form::
 
    template.method(other, pos=1)
-   
+
 These methods will position the *template* over, below, to the right or left of the passed *other* template. The *nodesep* attribute of the *other* template determines the spacing that should be made between the templates. The *nodesep* attibute value is multiplied by the passed *pos* argument.
 
 The method *align* can be used to position two templates in such a way that their points (*other* and *own*) passed as arguments to this method, become overlapped::
-   
+
    template.align(other, own)
 
 The point relative to the template can be specified using helper methods: *e*, *n*, *s* and *w*
-   
+
 .. list-table::
    :header-rows: 1
-   
+
    * - Method
      - Description
    * - n
@@ -111,3 +111,105 @@ When an **int** value is supplied to these methods as a parameter, the value wil
 
 The function *prev* of the BDP package can be used to access the last template that has been derived in the script.
 
+Text alignment within block
+---------------------------
+
+Text can be aligned within block using the alignment attribute. String of two characters are expected for the value of the alignment, the first one for the vertical and the second for the horizontal alignment. The following figure shows the available settings for the alignment attribute.
+
+.. figure:: images/text_align_example.png
+   :width: 60%
+
+For the alignment setting, all combinations of the first and second character from the table below are valid.
+
+.. list-table::
+   :widths: 5 30 5 30
+   :header-rows: 1
+
+   * - First character
+     - Vertical text position
+     - Second character
+     - Horizontal text position
+   * - 't'
+     - Above the top edge
+     - 'w'
+     - Left aligned
+   * - 'n'
+     - Below the top edge
+     - 'c'
+     - Center aligned
+   * - 'c'
+     - Vertically centered
+     - 'e'
+     - Right aligned
+   * - 's'
+     - Above the bottom edge
+     -
+     -
+   * - 'b'
+     - Below the bottom edge
+     -
+     -
+
+Settings text attributes
+------------------------
+
+Text is an attribute of the *block* template and it is itself a template. Text attributes can be thus accessed as *template.text.attr*. Additionaly as a shorthand, text attributes can be accessed as *template.text_attr*. The following example shows two ways of accessing text attributes.
+
+.. literalinclude:: images/text_attr_access.py
+
+Resulting in:
+
+.. figure:: images/text_attr_access.png
+
+The *fig* object
+----------------
+
+The *fig* object accepts the BDP templates via '<<' operator and memorizes their TikZ renderings in order to form coplete TikZ image. Additionally *fig* memorizes the template objects too, and can be used to reference them. The templates can be referenced via their text attribute, or via order in which they were rendered. Both are done via indexing operator. When referencing via template text, wildcards '*' and '?' can be used. The following example demonstrates the two ways.
+
+.. literalinclude:: images/fig_reference.py
+
+Resulting in:
+
+.. figure:: images/fig_reference.png
+
+The *fig* object has following attributes that can be used to customize the TikZ rendering:
+
+.. list-table::
+   :widths: 10 30
+   :header-rows: 1
+
+   * - Attribute
+     - Description
+   * - grid
+     - Scale between the BDP units and points (pt) in TikZ
+   * - package
+     - Python set containing package names that should be imported via \usepackage statement
+   * - tikz_library
+     - Python set containing tikz libraries that should be imported via \usetikzlibrary statement
+   * - tikz_prolog
+     - Latex statements between the \begin{document} and \begin{tikzpicture}
+   * - options
+     - Global options for TikZ picture
+   * - tikz_epilog
+     - Latex statements between the \end{tikzpicture} and \end{document}
+
+*path* template
+---------------
+
+The *path* template is used to render wires in BDP diagrams. The *path* template operates similarly to the *block* and *text* templates. The difference is that it behaves as a container for a list of points that constitute a path and a list of line routing options stored in *route* attribute.
+
+.. literalinclude:: images/line_example.py
+
+Resulting in:
+
+.. figure:: images/line_example.png
+
+If *route* contains less items than there are point pairs, it is padded with value supplied to the *routedef* attribute.
+
+The *path* template can also use new **arrays.meta** library via *cap* template, however TeX Live 2014 is needed for this.
+
+.. literalinclude:: images/arrows_meta.py
+
+Resulting in:
+
+.. figure:: images/arrows_meta.png
