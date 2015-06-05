@@ -8,7 +8,7 @@ This package contains the bdpfigure Sphinx extension.
 .. add description here ..
 '''
 
-requires = ['pexpect']
+requires = ['pexpect', 'sphinx-argparse']
 
 setup(
     name='bdp',
