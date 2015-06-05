@@ -13,12 +13,6 @@ Figure can be rendered with the :ref:`Python code <fig-compile-process>` provide
 
    # bdp compile_process.py -p
    
-.. bdp::
-   
-   block.size=(6,3)
-   
-   fig << block(r"Python \\ Description")
-
 Why BDP?
 --------
 
