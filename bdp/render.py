@@ -9,6 +9,9 @@ import bdp.node
 class BdpError(Exception):
     pass
 
+clear_extensions_pdf = ['.log', '.tex', '.aux']
+clear_extensions_png = clear_extensions_pdf + ['.pdf', '-1.ppm']
+
 def render_tikz(fin, fout=None, outdir=None):
     found = False
     importlib.reload(bdp.node)
@@ -100,40 +103,77 @@ def pdf2png(pdf_file, resolution=256):
 
 def render(fin, fout=None, outdir=None, options={}):
     
-    if fout is not None:
+    if fout:
         fout_tex = os.path.splitext(fout)[0] + '.tex'
+        fout_ext = os.path.splitext(fout)[1]
     else:
         fout_tex = None
+        fout_ext = 'pdf'
         
     tex_file = render_tikz(fin, fout_tex, outdir)
-
+    base_tex = os.path.splitext(tex_file)[0]
+    
     convert_pdf(tex_file)
 
-    if 'c' in options:
-        if options['r'] is not None:
-            pdf2png(os.path.splitext(tex_file)[0] + '.pdf', resolution=options['r'])
+    clear_exts_list = clear_extensions_pdf
+
+    try:
+        render_png = options['p']
+    except KeyError:
+        render_png = False
+        
+    try:
+        render_png_res = options['r']
+    except KeyError:
+        render_png_res = False
+        
+    if render_png or (fout_ext == 'png'):
+        if render_png_res is not None:
+            pdf2png(base_tex + '.pdf', resolution=render_png_res)
         else:
-            pdf2png(os.path.splitext(tex_file)[0] + '.pdf')
+            pdf2png(base_tex + '.pdf')
+            
+        clear_exts_list = clear_extensions_png    
+        
+    try:
+        clear_exts = options['c']
+    except KeyError:
+        clear_exts = False
+        
+    if clear_exts:
+        for ext in clear_exts_list:
+            try:
+                os.remove(base_tex + ext)
+            except OSError:
+                pass
+        
 
-def main(arv=sys.argv):
-
+def argparser():
     parser = argparse.ArgumentParser(
-        description='Block Diagram in Python renderer.'
+        description="""Depending on the extension of the output file, BDP will generate either PDF or PNG. If output file is not specified, it will have the same name as the input, and generated extension will depend on the [-p] argument value.         
+"""
     )
 
     parser.add_argument('input', metavar='input',
                         help="Input BDP file")
     
-    parser.add_argument('output', metavar='outdir',
-                        help="Output file")
+    parser.add_argument('-o', '--output', default = '',
+                        help="Output PDF or PNG file")
     
     parser.add_argument('-d', '--outdir',
                         default = '',
                         help="Output directory")
 
-    parser.add_argument('-c', action='store_true')
-    parser.add_argument('-r')
+    parser.add_argument('-p', action='store_true', help='Render PNG')
+    parser.add_argument('-c', action='store_true', help='Clear intermediate files')
+    parser.add_argument('-r', help='Number representing DPI resolution of the generated PNG')
 
+    return parser
+
+def main(arv=sys.argv):
+
+    parser = argparser()
+    
     opts = parser.parse_args(sys.argv[1:])
 
     options = opts.__dict__

@@ -9,7 +9,9 @@ BDP (Block Diagrams in Python) aims to become a Python fronted for `TikZ <http:/
 .. figure:: images/compile_process.png
     :width: 60%
 
-Figure can be rendered with the :ref:`Python code <fig-compile-process>` provided below.
+Figure can be rendered with the :ref:`Python code <fig-compile-process>` provided below, which is also available in repository inside `compile_process.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/compile_process.py>`_ BDP diagram. It can be rendered into the PNG with BDP via command line::
+
+   # bdp compile_process.py -p
 
 Why BDP?
 --------
@@ -57,6 +59,15 @@ Install BDP using easy_install::
 Install BDP from source::
     
     python setup.py install
+    
+BDP requires TeX Live, which could be installed on a Debian or a Debian-derived systems, with::
+
+    # sudo apt-get install texlive
+    
+For converting PDF to PNG, pdftoppm, pnmcrop and pnmtopng are needed, which could be installed on a Debian or a Debian-derived systems, with::
+
+   # sudo apt-get install poppler-utils
+   # sudo apt-get install netpbm
 
 Read the documentation
 ----------------------
@@ -66,7 +77,7 @@ Start with the short tutorial :ref:`tutorial`
 Checkout the examples
 ---------------------
 
-Examples are located in the `examples <https://github.com/bogdanvuk/bdp/tree/master/examples>`_ repository folder.
+BDP images used in documentation are located in the `images <https://github.com/bogdanvuk/bdp/tree/master/doc/source/images>`_ repository documentation folder.
 
 Get involved
 ------------
@@ -93,3 +104,4 @@ Contents
    :maxdepth: 2
    
    tutorial
+   command_line

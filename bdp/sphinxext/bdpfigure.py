@@ -65,7 +65,7 @@ def render_bdpfigure(app, filename, options):
     
     options = {}
     if app.builder.format == 'html':
-        options['c'] = True
+        options['p'] = True
         options['r'] = app.env.config.bdp_resolution
         name = stem + '.png'
     else:

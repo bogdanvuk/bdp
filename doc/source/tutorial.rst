@@ -206,7 +206,7 @@ Resulting in:
 
 If *route* contains less items than there are point pairs, it is padded with value supplied to the *routedef* attribute.
 
-The *path* template can also use new **arrays.meta** library via *cap* template, however TeX Live 2014 is needed for this.
+The *path* template can also use new **arrays.meta** library via *cap* template (TeX Live 2014 containes the library out of the box).
 
 .. literalinclude:: images/arrows_meta.py
 
