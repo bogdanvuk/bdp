@@ -224,7 +224,7 @@ class LatexServer(object):
     def __init__(self):
 #         print('Init!')
         self.proc = pexpect.spawnu('pdflatex -draftmode -output-directory=' + tempfile.gettempdir(), timeout=0.5)
-        self.proc.expect('enabled.')
+#         self.proc.expect('enabled.')
 #         print(self.proc.before)
         self.proc.send(self.latex_preamble)
 
