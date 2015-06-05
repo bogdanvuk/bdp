@@ -16,6 +16,7 @@ from shutil import copyfile
 class BdpFigureDirective(Figure):
 
     required_arguments = 0
+    optional_arguments = 1
     has_content = True
 
     option_spec = Figure.option_spec.copy()
@@ -23,9 +24,17 @@ class BdpFigureDirective(Figure):
 
     def run(self):
 
-        self.arguments = ['']
+        print('Here!')
+        print(self.arguments)
+        
         text = '\n'.join(self.content)
-
+        try:
+            filename = self.arguments[0]
+        except:
+            filename = None
+        
+        self.arguments = ['']
+        
         try:
             self.content[0] = self.options['caption']
 
@@ -33,12 +42,56 @@ class BdpFigureDirective(Figure):
                 self.content.trim_end(len(self.content) - 1)
         except:
             self.content = None
-
+            
         (figure_node,) = Figure.run(self)
         if isinstance(figure_node, nodes.system_message):
             return [figure_node]
+        
+        if filename:
 
-        figure_node.bdpfigure = text
+            env = self.state.document.settings.env
+            rel_filename, filename = env.relfn2path(filename)
+            env.note_dependency(rel_filename)
+            
+            figure_node.bdpfile = filename
+        
+        else:
+            figure_node.bdpcontent = text
+            
+#             print(filename)
+#             print(rel_filename)
+#             
+# #             env = app.env
+# #             docdir = os.path.dirname(env.doc2path(env.docname, base=None))
+# # 
+# #             if filename.startswith('/'):
+# #                 filename = os.path.normpath(filename[1:])
+# #             else:
+# #                 filename = os.path.normpath(os.path.join(docdir, filename))
+# #             
+# #             env.note_dependency(filename)
+# #             filename = os.path.join(env.srcdir, filename)
+# #             except:
+# #                 continue
+# 
+#             
+#         self.arguments = ['']
+#         text = '\n'.join(self.content)
+# 
+#         try:
+#             self.content[0] = self.options['caption']
+# 
+#             while len(self.content) > 1:
+#                 self.content.trim_end(len(self.content) - 1)
+#         except:
+#             self.content = None
+# 
+#         (figure_node,) = Figure.run(self)
+#         if isinstance(figure_node, nodes.system_message):
+#             return [figure_node]
+# 
+#         figure_node.bdpcontent = text
+#         figure_node.bdpfile = text
         return [figure_node]
 
 
@@ -162,8 +215,8 @@ def get_hashid(text):
 def render_bdp_images(app, doctree):
     
     for fig in doctree.traverse(nodes.figure):
-        if hasattr(fig, 'bdpfigure'):
-            text = fig.bdpfigure
+        if hasattr(fig, 'bdpcontent'):
+            text = fig.bdpcontent
             hashid = get_hashid(text)
             fname = 'plot-%s' % (hashid)
 
@@ -187,30 +240,12 @@ def render_bdp_images(app, doctree):
             with open(filename, 'wb') as f:
                 f.write("from bdp import *\n\n".encode())
                 f.write(text.encode())
+        
+        elif hasattr(fig, 'bdpfile'):
+            filename = fig.bdpfile
         else:
-            try:
-                image=fig.children[0]
-                filename = image['uri']
-
-                basename = os.path.basename(filename)
-                extension = os.path.splitext(basename)[1]
-
-                if (extension != '.py'):
-                    continue
-
-                env = app.env
-                docdir = os.path.dirname(env.doc2path(env.docname, base=None))
-
-                if filename.startswith('/'):
-                    filename = os.path.normpath(filename[1:])
-                else:
-                    filename = os.path.normpath(os.path.join(docdir, filename))
-                env.note_dependency(filename)
-                filename = os.path.join(env.srcdir, filename)
-            except:
-                continue
-
-#         try:
+            continue
+    #         try:
         print(filename)
         fname = render_bdpfigure(app, filename, fig)
         print(fname)

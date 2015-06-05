@@ -12,6 +12,19 @@ BDP (Block Diagrams in Python) aims to become a Python fronted for `TikZ <http:/
 Figure can be rendered with the :ref:`Python code <fig-compile-process>` provided below, which is also available in repository inside `compile_process.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/compile_process.py>`_ BDP diagram. It can be rendered into the PNG with BDP via command line::
 
    # bdp compile_process.py -p
+
+For a complete list of command line options please take a look at :ref:`command_line` chapter.
+
+Contents
+========
+
+.. toctree::
+   :maxdepth: 2
+   
+   index
+   tutorial
+   command_line
+   sphinxext
    
 Why BDP?
 --------
@@ -96,12 +109,3 @@ Source codes for the examples
 
 .. literalinclude:: images/uml.py
     :caption: UML-like diagram of few major BDP templates.    
-
-Contents
-========
-
-.. toctree::
-   :maxdepth: 2
-   
-   tutorial
-   command_line

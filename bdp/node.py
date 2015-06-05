@@ -215,8 +215,15 @@ class LatexServer(object):
     
     def expect(self, tin, tout):
         self.proc.send(tin)
+        buffer = []
         while (1):
-            line = self.proc.readline()
+            try:
+                line = self.proc.readline()
+            except pexpect.TIMEOUT:
+                print(''.join(buffer))
+                raise
+            
+            buffer += [line]
 #             print(line)
             if line.startswith(tout):
                 return line

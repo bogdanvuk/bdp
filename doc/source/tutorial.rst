@@ -4,7 +4,7 @@
 BDP short tutorial
 ==================
 
-Block diagrams consist mainly of blocks connected by lines, hence minly two BDP objects will be used for drawing called *block* and *path*. All drawing objects in BDP are called **templates**. Templates carry descriptions of diagram components in form of many attributes which can be accessed, modified or added as a regular Python object attributes. New templates can be derived from the existing ones by calling them with a list of attributes that are be changed. Finally, the templates can be rendered to the diagram by passing them to the *fig* object.
+Block diagrams consist mainly of blocks connected by lines, hence mainly two BDP objects will be used for drawing called *block* and *path*. All drawing objects in BDP are called **templates**. Templates carry descriptions of diagram components in form of many attributes which can be accessed, modified or added as a regular Python object attributes. New templates can be derived from the existing ones by calling them with a list of attributes that are be changed. Finally, the templates can be rendered to the diagram by passing them to the *fig* object.
 
 All examples shown in this tutorial can be found in the bdp/doc/source/images folder of the bdp source code.
 
@@ -71,7 +71,7 @@ Template *a_template* is rendered to the following two TikZ elements by the rule
 Block relative position
 -----------------------
 
-Next example shows how BDP faciliates the relative positioning of the blocks in diagram.
+Next example shows how BDP facilitates the relative positioning of the blocks in diagram.
 
 .. literalinclude:: images/example2.py
 
@@ -83,7 +83,7 @@ There are several helper methods used to position the blocks relatively to one a
 
    template.method(other, pos=1)
 
-These methods will position the *template* over, below, to the right or left of the passed *other* template. The *nodesep* attribute of the *other* template determines the spacing that should be made between the templates. The *nodesep* attibute value is multiplied by the passed *pos* argument.
+These methods will position the *template* over, below, to the right or left of the passed *other* template. The *nodesep* attribute of the *other* template determines the spacing that should be made between the templates. The *nodesep* attribute value is multiplied by the passed *pos* argument.
 
 The method *align* can be used to position two templates in such a way that their points (*other* and *own*) passed as arguments to this method, become overlapped::
 
@@ -153,7 +153,7 @@ For the alignment setting, all combinations of the first and second character fr
 Settings text attributes
 ------------------------
 
-Text is an attribute of the *block* template and it is itself a template. Text attributes can be thus accessed as *template.text.attr*. Additionaly as a shorthand, text attributes can be accessed as *template.text_attr*. The following example shows two ways of accessing text attributes.
+Text is an attribute of the *block* template and it is itself a template. Text attributes can be thus accessed as *template.text.attr*. Additionally as a shorthand, text attributes can be accessed as *template.text_attr*. The following example shows two ways of accessing text attributes.
 
 .. literalinclude:: images/text_attr_access.py
 
@@ -164,7 +164,7 @@ Resulting in:
 The *fig* object
 ----------------
 
-The *fig* object accepts the BDP templates via '<<' operator and memorizes their TikZ renderings in order to form coplete TikZ image. Additionally *fig* memorizes the template objects too, and can be used to reference them. The templates can be referenced via their text attribute, or via order in which they were rendered. Both are done via indexing operator. When referencing via template text, wildcards '*' and '?' can be used. The following example demonstrates the two ways.
+The *fig* object accepts the BDP templates via '<<' operator and memorizes their TikZ renderings in order to form complete TikZ image. Additionally *fig* memorizes the template objects too, and can be used to reference them. The templates can be referenced via their text attribute, or via order in which they were rendered. Both are done via indexing operator. When referencing via template text, wildcards '*' and '?' can be used. The following example demonstrates the two ways.
 
 .. literalinclude:: images/fig_reference.py
 
@@ -206,7 +206,7 @@ Resulting in:
 
 If *route* contains less items than there are point pairs, it is padded with value supplied to the *routedef* attribute.
 
-The *path* template can also use new **arrays.meta** library via *cap* template (TeX Live 2014 containes the library out of the box).
+The *path* template can also use new **arrays.meta** library (TeX Live 2014 contains the library out of the box) via *cap* template.
 
 .. literalinclude:: images/arrows_meta.py
 
