@@ -9,11 +9,11 @@ BDP (Block Diagrams in Python) aims to become a Python fronted for `TikZ <http:/
 .. figure:: doc/source/images/compile_process.png
     :width: 40%
 
-Figure can be rendered with the :ref:`compile_process.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/compile_process.py>`_ BDP diagram. It can be rendered into the PNG with BDP via command line::
+Figure can be rendered with the `compile_process.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/compile_process.py>`_ BDP diagram. It can be rendered into the PNG with BDP via command line::
 
    # bdp compile_process.py -p
 
-For a complete list of command line options please take a look at :ref:`command_line` chapter.
+For a complete list of command line options please take a look at `command_line http://bdp.readthedocs.org/en/latest/command_line.html#command-line`_ chapter of the documentation.
 
 Contents
 --------
@@ -52,7 +52,7 @@ Image below is a more complex example, which shows how power of Python programmi
 
     Figure can be rendered with the following Python code:
 
-Figure can be rendered with the :ref:`compile_process.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/uml.py>`_ BDP diagram.
+Figure can be rendered with the `compile_process.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/uml.py>`_ BDP diagram.
 
 Where to start?
 ===============
