@@ -3,9 +3,7 @@
 from setuptools import setup, find_packages
 
 long_desc = '''
-This package contains the bdpfigure Sphinx extension.
-
-.. add description here ..
+bdp (Block Diagram in Python) is a package that translates diagrams described using Python objects to TikZ and renders PDF and PNG images.
 '''
 
 requires = ['pexpect', 'sphinx-argparse']
@@ -14,7 +12,7 @@ setup(
     name='bdp',
     version='0.1',
     url='https://github.com/bogdanvuk/bdp',
-    download_url = 'https://github.com/bogdanvuk/bdp/tarball/0.0.1',
+    download_url = 'https://github.com/bogdanvuk/bdp/tarball/0.1',
     license='BSD',
     author='Bogdan Vukobratovic',
     author_email='bogdan.vukobratovic@gmail.com',
@@ -24,7 +22,6 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
-        'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',

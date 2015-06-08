@@ -16,12 +16,11 @@ Figure can be rendered with the :ref:`Python code <fig-compile-process>` provide
 For a complete list of command line options please take a look at :ref:`command_line` chapter.
 
 Contents
-========
+--------
 
 .. toctree::
    :maxdepth: 2
    
-   index
    tutorial
    command_line
    sphinxext
