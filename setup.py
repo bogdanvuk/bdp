@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
+from os import path
 
-long_desc = '''
-bdp (Block Diagram in Python) is a package that translates diagrams described using Python objects to TikZ and renders PDF and PNG images.
-'''
+here = path.abspath(path.dirname(__file__))
+# Get the long description from the relevant file
+with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = f.read()
 
 requires = ['pexpect', 'sphinx-argparse']
 
@@ -17,7 +19,7 @@ setup(
     author='Bogdan Vukobratovic',
     author_email='bogdan.vukobratovic@gmail.com',
     description='Block Diagrams in Python',
-    long_description=long_desc,
+    long_description=long_description,
     zip_safe=False,
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -35,6 +37,7 @@ setup(
     platforms='any',
     packages=find_packages(),
     include_package_data=True,
+    keywords= ['Python', 'TikZ', 'Block diagram', 'PDF', 'PNG', 'Sphinx'],
     entry_points={
         'console_scripts': [
             'bdp = bdp.render:main',
