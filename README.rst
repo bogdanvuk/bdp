@@ -13,7 +13,7 @@ Figure can be rendered with the `compile_process.py <https://github.com/bogdanvu
 
    # bdp compile_process.py -p
 
-For a complete list of command line options please take a look at `command_line http://bdp.readthedocs.org/en/latest/command_line.html#command-line`_ chapter of the documentation.
+For a complete list of command line options please take a look at `command_line <http://bdp.readthedocs.org/en/latest/command_line.html#command-line>`_ chapter of the documentation.
 
 Contents
 --------
@@ -52,7 +52,7 @@ Image below is a more complex example, which shows how power of Python programmi
 
     Figure can be rendered with the following Python code:
 
-Figure can be rendered with the `compile_process.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/uml.py>`_ BDP diagram.
+Figure can be rendered with the `uml.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/uml.py>`_ BDP diagram.
 
 Where to start?
 ===============
