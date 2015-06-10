@@ -45,17 +45,19 @@ Where to start?
 Installation
 ------------
 
+BDP package currently supports only Python 3. Following are alternative ways to install BDP.
+
 Install BDP using pip::
     
-    pip install bdp
+    pip3 install bdp
 
 Install BDP using easy_install::
     
-    easy_install bdp
+    easy_install3 bdp
 
 Install BDP from source::
     
-    python setup.py install
+    python3 setup.py install
     
 BDP requires TeX Live, which could be installed on a Debian or a Debian-derived systems, with::
 
