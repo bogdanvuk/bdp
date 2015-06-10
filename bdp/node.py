@@ -800,15 +800,62 @@ class Shape(Element):
         
         self.__dict__['p'] = p(value)
 
-    def __getitem__(self, key):
-        return self._child[key]
-    
+    def __iadd__(self, obj):
+        try:
+            key = obj.t
+        except AttributeError:
+            try:
+                key = obj.text.t
+            except AttributeError:
+                key = hash(obj)
+        
+        i = ''
+        while ((key + i) in self._child_keys):
+            if not i:
+                i = '1'
+            else:
+                i = str(int(i) + 1)
+        
+        key += i
+                
+        self.__setitem__(key, obj)
+        
+        return self
+
+    def _get_key(self, val):
+        if isinstance(val, int):
+            return self._child_keys[val], val
+        elif isinstance(val, str):
+            match = ''
+            for i, t in enumerate(self._child_keys):
+                try:
+                    if fnmatch.fnmatch(t, val):
+                        return t, i
+                except AttributeError:
+                    pass
+                
+            raise KeyError
+        else:
+            raise KeyError
+
+    def __delitem__(self, val):
+        key, i = self._get_key(val)
+        
+        del self._child_keys[i]
+        del self._child[key]
+
+    def __getitem__(self, val):
+        return self._child[self._get_key(val)[0]]
+
     def __setitem__(self, key, val):
         if key not in self._child:
             self._child_keys.append(key)
             
         self._child[key] = val
-        
+
+    def remove(self, val):
+        self.__delitem__(val)
+
     def __iter__(self):
         for k in self._child_keys:
             yield k
