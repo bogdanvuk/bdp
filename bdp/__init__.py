@@ -26,4 +26,5 @@ except ImportError:
     version = None
 
 from bdp.point import Point as p, Poff as poff, Poffy as poffy, Poffx as poffx, mid, midy, midx
-from bdp.node import block, fig, prev, path, shape, text, Element, Node, cap
+from bdp.node import block, prev, path, shape, text, Element, cap, group
+from bdp.figure import fig, Figure

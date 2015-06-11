@@ -45,6 +45,9 @@ class Point(object):
 
     __repr__ = __str__
 
+    def __eq__(self, other):
+        return (self[0] == other[0]) and (self[1] == other[1])
+
     def __add__(self, other):
         return Point(self[0] + other[0], self[1] + other[1])
 

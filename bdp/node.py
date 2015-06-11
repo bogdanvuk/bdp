@@ -19,182 +19,15 @@
 from string import Template
 import copy
 import math
-import tempfile
-import os
-from cgitb import text
-import subprocess
-import pexpect
-import sys
 
 from bdp.point import Point as p, Poff
+from bdp.tikz_node import TikzNode, TikzMeta
 import fnmatch
-
-test = r"""
-\documentclass{article}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta}
-\begin{document}
-
-\begin{tikzpicture}
-\draw[black,step=1cm,thin] (0,0) grid (6,6);
-\draw[-Latex[red,length=5mm,width=2mm],semithick] (0,1) -- (6,1);
-\draw[-{Latex[red,length=5mm,width=2mm,angle'=90]},semithick] (0,1) -- (5,1);
-\draw[-{Latex[red,length=5mm,width=2mm,angle'=45,open]},semithick] (0,1) -- (4,1);
-\draw[-{Latex[red,length=5mm,width=2mm, angle=60:10pt]},semithick] (0,1) -- (3,1);
-\draw[-{Stealth[scale=1.3,angle'=45]},semithick] (0,2) -- (6,2);
-\draw[-{Stealth[scale=1.3,angle'=90]},semithick] (0,2) -- (5,2);
-\draw[-{Stealth[scale=1.3,angle'=45,open]},semithick] (0,2) -- (4,2);
-\draw[-{Stealth[scale=1.3,inset=1pt, angle=90:10pt]},semithick] (0,2) -- (3,2);
-\end{tikzpicture}
-\end{document}
-"""
-
-class Figure(object):
-    grid    = 10
-    origin  = p(1000, 1000)
-    package = set(['tikz'])
-    tikz_library = set(['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings'])
-    options = 'yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}'
-    tikz_prolog = ''
-#     tikz_prolog = r"""
-# % for double arrows a la chef
-# % adapt line thickness and line width, if needed
-# \tikzstyle{thickarr} = [thick, decoration={markings,mark=at position
-#    1 with {\arrow[semithick]{open triangle 60}}},
-#    double distance=1.4pt, shorten >= 5.5pt,
-#    preaction = {decorate},
-#    postaction = {draw,line width=1.4pt, white,shorten >= 4.5pt}]
-# \tikzstyle{innerWhite} = [semithick, white,line width=1.4pt, shorten >= 4.5pt]
-# """
-#     tikz_prolog = r"""
-#     \tikzset{
-#   double arrow/.style args={#1 colored by #2 and #3}{
-#     -stealth,line width=#1,#2, % first arrow
-#     postaction={draw,-stealth,#3,line width=(#1)/3,
-#                 shorten <=(#1)/3,shorten >=2*(#1)/3}, % second arrow
-#   }
-# }
-# """
-    
-    tikz_epilog = ''
-    
-    template = Template(r"""
-\documentclass{standalone}
-
-$packages
-$tikz_libraries 
-
-\begin{document}
-\pagestyle{empty}
-$tikz_prolog
-\begin{tikzpicture}[$options]
-$tikz
-\end{tikzpicture}
-$tikz_epilog
-\end{document}
-""")
-    
-#     tikz_prolog = r"""
-# \documentclass{standalone}
-# 
-# \usepackage{tikz}
-# \usetikzlibrary{shapes,arrows,decorations.pathreplacing}
-# 
-# \begin{document}
-# \pagestyle{empty}
-# \begin{tikzpicture}[yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}]
-# 
-#     """
-# 
-#     tikz_epilog = r"""
-# \end{tikzpicture}
-# 
-# \end{document}
-#     """
-    
-    def to_units(self,num):
-        return "{0:.2f}{1}".format(num*self.grid, "pt")
-    
-    def from_units(self, s):
-        s = s.replace('pt', '')
-        return float(s) / self.grid
-    
-    def __init__(self):
-        self._tikz = ''
-        self._preamble = ''
-        self._tmpl = []
-    
-    def _render_recursive(self, val):
-        self._render_val(val)
-        
-        try:
-            for k in val:
-                self._render_recursive(val[k])
-                
-        except TypeError:
-            pass
-                
-    def _render_val(self, val):
-        if hasattr(val, '_render_tikz'):
-            self._tikz += val._render_tikz(self) + '\n'
-            self._tmpl.append(val)
-        else:
-            self._tikz += str(val)  + '\n'
-    
-    def __lshift__(self, val):
-        self._render_recursive(val)
-        return self
-            
-    def __getitem__(self, val):
-        if isinstance(val, int):
-            return self._tmpl[val]
-        elif isinstance(val, str):
-            match = ''
-            for t in self._tmpl:
-                try:
-                    if fnmatch.fnmatch(t.t, val):
-                        return t
-                except AttributeError:
-                    try:
-                        if fnmatch.fnmatch(t.text.t, val):
-                            return t
-                    except AttributeError:
-                        pass
-                
-            raise KeyError
-        else:
-            raise KeyError
-                    
-            
-    def __str__(self):
-        
-#         return test
-        
-        packages = ''
-        for p in self.package:
-            packages += r'\usepackage{' + p + '}\n'
-
-        tikz_libraries = ''
-        for l in self.tikz_library:
-            tikz_libraries += r'\usetikzlibrary{' + l + '}\n'
-        
-        return self.template.substitute(
-                                        packages = packages,
-                                        tikz_libraries = tikz_libraries,
-                                        tikz_prolog = self.tikz_prolog,
-                                        options = self.options,
-                                        tikz = self._tikz,
-                                        tikz_epilog = self.tikz_epilog
-                                        )
-#         return self.tikz_prolog + self._tikz.replace('\n', '\n    ') + self.tikz_epilog
+from bdp.latex_server import latex_server
+from bdp.figure import fig
 
 obj_list = []
-# tmpl_list = [None]
 tmpl_cur = [None]
-
-# def prev(i=0):
-#     i = -(i+1)
-#     return tmpl_list[i]
 
 def prev(*args, **kwargs):
     if not args and not kwargs:
@@ -203,57 +36,23 @@ def prev(*args, **kwargs):
         return tmpl_cur[0](*args, **kwargs)
 
 
-class LatexServer(object):
-    latex_preamble = r"""\documentclass{standalone}
-\usepackage{calc}
-\usepackage{tikz}
-\usepackage{makecell}
-
-\newlength\mywidth
-\newlength\myheight
-\newlength\myminx
-\newlength\mymaxx
-\newlength\myminy
-\newlength\mymaxy
-
-\newcommand{\PgfPosition}{%
-    \global\let\myminx=\pgfpositionnodelaterminx%
-    \global\let\mymaxx=\pgfpositionnodelatermaxx%
-    \global\let\myminy=\pgfpositionnodelaterminy%
-    \global\let\mymaxy=\pgfpositionnodelatermaxy%
-}%
-
-\begin{document}
-"""
-    
-    def expect(self, tin, tout):
-        self.proc.send(tin)
-        buffer = []
-        while (1):
-            try:
-                line = self.proc.readline()
-            except pexpect.TIMEOUT:
-                print(''.join(buffer))
-                raise
-            
-            buffer += [line]
-#             print(line)
-            if line.startswith(tout):
-                return line
-    
-    def __init__(self):
-#         print('Init!')
-        self.proc = pexpect.spawnu('pdflatex -draftmode -output-directory=' + tempfile.gettempdir(), timeout=0.5)
-#         self.proc.expect('enabled.')
-#         print(self.proc.before)
-        self.proc.send(self.latex_preamble)
-
-
-latex_server = LatexServer()
-
 class TemplatedObjects(object):
     _def_settings = {}
     _template = None
+
+    def __init__(self, template=None, **kwargs):
+
+        for k,v in self._def_settings.items():
+            setattr(self, k, copy.deepcopy(v))
+        
+        if template is not None:
+            for k,v in template.__dict__.items():
+                setattr(self, k, copy.deepcopy(v))
+
+        self._template = template
+        
+        for k,v in kwargs.items():
+            setattr(self, k, copy.deepcopy(v))
 
     def __getattr__(self, attr, *args, **kwargs):
         try:
@@ -272,64 +71,8 @@ class TemplatedObjects(object):
                 else:
                     raise AttributeError
             except (KeyError, TypeError, AttributeError):
-#                 raise AttributeError
                 raise AttributeError("%r object has no attribute %r" %
                                         (self.__class__, attr))
-#         try:
-#             return self.__dict__[attr]
-#         except (KeyError, TypeError):
-#             try:
-#                 if attr[0] != '_':
-#                     return copy.deepcopy(getattr(self._template, attr))
-#                 else:
-#                     raise AttributeError
-#             except AttributeError:
-#                 try:
-#                     #if it is not special methods that are required
-#                     if attr[0] != '_':
-#                         tokens = attr.split('_')
-#                         obj = tokens[0]
-#                         child_attr = '_'.join(tokens[1:])
-#                         if child_attr:
-#                             return getattr(getattr(self, obj), child_attr)
-#                         else:
-#                             raise AttributeError
-#                     else:
-#                         raise AttributeError
-#                 except (KeyError, TypeError, AttributeError):
-#                     try:
-#                         self.__dict__[attr] = copy.deepcopy(self._def_settings[attr])
-#                         return self.__dict__[attr]
-#                     except KeyError:
-#                         raise AttributeError("%r object has no attribute %r" %
-#                                             (self.__class__, attr))
-            
-#             try:
-#                 if attr[0] != '_':
-#                     return copy.deepcopy(getattr(self._template, attr))
-#                 else:
-#                     raise AttributeError
-#             except AttributeError:
-#                 try:
-#                     self.__dict__[attr] = copy.deepcopy(self._def_settings[attr])
-#                     return self.__dict__[attr]
-#                 except KeyError:
-#                     #if it is not special methods that are required
-#                     if attr[0] != '_':
-#                         try:
-#                             tokens = attr.split('_')
-#                             obj = tokens[0]
-#                             child_attr = '_'.join(tokens[1:])
-#                             if child_attr:
-#                                 return getattr(getattr(self, obj), child_attr)
-#                             else:
-#                                 raise AttributeError
-#                         except (KeyError, TypeError, AttributeError):
-#                             raise AttributeError("%r object has no attribute %r" %
-#                                             (self.__class__, attr))
-#                     else:
-#                         raise AttributeError("%r object has no attribute %r" %
-#                                             (self.__class__, attr))
 
     def __setattr__(self, attr, val):
         if attr[0] == '_':
@@ -345,118 +88,14 @@ class TemplatedObjects(object):
                     raise AttributeError
             except (KeyError, TypeError, AttributeError):
                 super().__setattr__(attr, val)
-        
-#         if attr[0] == '_':
-#             super().__setattr__(attr, val)
-#         else:
-#             try:
-#                 a = getattr(self, attr, val)
-#                 super().__setattr__(attr, val)
-#             except AttributeError:
-#                 try:
-#                     tokens = attr.split('_')
-#                     obj = tokens[0]
-#                     obj_attr = '_'.join(tokens[1:])
-#                     if obj_attr:
-#                         return setattr(getattr(self, obj), obj_attr, val)
-#                     else:
-#                         raise AttributeError
-#                 except (KeyError, TypeError, AttributeError):
-#                     super().__setattr__(attr, val)
-#                 
-#         if attr in self.__class__.__dict__:
-#             super().__setattr__(attr, val)
-#         else:
-#             try:
-#                 tokens = attr.split('_')
-#                 obj = tokens[0]
-#                 obj_attr = '_'.join(tokens[1:])
-#                 if obj_attr:
-#                     return setattr(getattr(self, obj), obj_attr, val)
-#                 else:
-#                     raise AttributeError
-#             except (KeyError, TypeError, AttributeError):
-#                 super().__setattr__(attr, val)
 
     def __call__(self, *args, **kwargs):
-
         kwargs['template'] = self
-
         tmpl_cur[0] = self.__class__(*args, **kwargs)
-
-#        tmpl_list[-1] = tmpl_cur
 
         return tmpl_cur[0]
 
-    def __init__(self, template=None, **kwargs):
-
-        for k,v in self._def_settings.items():
-            setattr(self, k, copy.deepcopy(v))
-        
-        if template is not None:
-            for k,v in template.__dict__.items():
-                setattr(self, k, copy.deepcopy(v))
-##             self.__dict__.update(copy.deepcopy(template.__dict__))
-        self._template = template
-        
-        for k,v in kwargs.items():
-            setattr(self, k, copy.deepcopy(v))
-
-#         self.__dict__.update(copy.deepcopy(kwargs))
-
-class TikzMeta(TemplatedObjects):
-
-    _tikz_meta_options = []
-    _tikz_len_measures = []
-#     _tikz_options = []
-    _aliases = {}
-
-    def _options(self, excluded=None):
-        if not excluded:
-            excluded = set()
-
-        excluded |= set(self._tikz_meta_options)
-
-        for s in self.__dict__:
-            if s[0] != '_':
-                if s not in excluded:
-                    excluded.add(s)
-                    yield s
-
-#         if self._template:
-#             yield from self._template._options(excluded)
-
-        for s in self._def_settings:
-            if s[0] != '_':
-                if s not in excluded:
-                    excluded.add(s)
-                    yield s
-
-
-    def _render_tikz_options(self, fig=None):
-        options = []
-
-        for s in self._options():
-            try:
-                options.append(getattr(self, "_render_tikz_" + s)(fig))
-            except AttributeError:
-                val = getattr(self, s)
-
-                if s in self._aliases:
-                    s = self._aliases[s]
-
-#                 if s in self._tikz_options:
-                if val is True:
-                    options.append(s.replace('_', ' '))
-                elif val is not False:
-                    if s in self._tikz_len_measures:
-                        val = fig.to_units(val)
-                        
-                    options.append(s.replace('_', ' ') + '=' + str(val))
-
-        return ','.join(options)
-
-class Instance(TikzMeta):
+class Instance(TikzMeta, TemplatedObjects):
     _tikz_meta_options = TikzMeta._tikz_meta_options +  ['type']
     
     def _render_tikz(self, fig=None):
@@ -465,58 +104,6 @@ class Instance(TikzMeta):
             options = "[{0}]".format(options)
             
         return self.type + options 
-
-class Node(TikzMeta):
-    '''
-    classdocs
-    '''
-
-    _tikz_meta_options = TikzMeta._tikz_meta_options +  ['p', 't']
-
-#     def _render_tikz_font(self, fig=None):
-#         return "font=\\" + self.font
-
-    def _render_tikz_p(self, fig=None):
-        pos = self.p + fig.origin + self.size/2
-        return "{0}, {1}".format(fig.to_units(pos[0]), fig.to_units(pos[1]))
-
-    def _render_tikz_t(self, fig=None):
-        try:
-            return self.t
-        except AttributeError:
-            return ''
-
-    def _render_tikz(self, fig=None):
-        try:
-            pos = self._render_tikz_p(fig)
-        except AttributeError:
-            pos = ''
-
-        if pos:
-            pos = "at ({0})".format(pos)
-
-        options = self._render_tikz_options(fig)
-
-        if options:
-            options = "[{0}]".format(options)
-
-        text = self._render_tikz_t(fig)
-
-        if text:
-            text = "{{{0}}}".format(text)
-        else:
-            text = "{}"
-
-        return ' '.join(["\\node", pos, options, text, ";"])
-
-
-    @property
-    def size(self):
-        return self.__getattr__('size')
-
-    @size.setter
-    def size(self, value):
-        self.__dict__['size'] = p(value)
 
 def pos_decode(major='x'):
 
@@ -612,28 +199,155 @@ def axis_decode(axis='x'):
     
     return axis_decode_wrap
 
-class Element(Node):
+class Group(object):
+    def __init__(self, *args, **kwargs):
+        self._child = {}
+        self._child_keys = []
+        
+        self.extend(*args, **kwargs)
+    
+    def __iadd__(self, obj):
+        try:
+            key = obj.t
+        except AttributeError:
+            try:
+                key = obj.text.t
+            except AttributeError:
+                key = str(hash(obj))
+        
+        i = ''
+        while ((key + i) in self._child_keys):
+            if not i:
+                i = '1'
+            else:
+                i = str(int(i) + 1)
+        
+        key += i
+                
+        self.__setitem__(key, obj)
+        
+        return self
 
-    _def_settings = Node._def_settings.copy()
+    def _get_key(self, val):
+        if isinstance(val, int):
+            return self._child_keys[val], val
+        elif isinstance(val, str):
+            for i, t in enumerate(self._child_keys):
+                try:
+                    if fnmatch.fnmatch(t, val):
+                        return t, i
+                except AttributeError:
+                    pass
+                
+            raise KeyError
+        else:
+            raise KeyError
+
+    def __delitem__(self, val):
+        key, i = self._get_key(val)
+        
+        del self._child_keys[i]
+        del self._child[key]
+
+    def __getitem__(self, val):
+        return self._child[self._get_key(val)[0]]
+
+    def __setitem__(self, key, val):
+        if key not in self._child:
+            self._child_keys.append(key)
+            
+        self._child[key] = val
+
+    def remove(self, val):
+        self.__delitem__(val)
+        
+    def extend(self, *args, **kwargs):
+        for a in args:
+            self += a
+            
+        for k,v in kwargs.items():
+            self[k] = v
+            
+        return self
+            
+    def __iter__(self):
+        for k in self._child_keys:
+            yield k
+    
+
+class Element(TemplatedObjects, Group):
+
+    _def_settings = TemplatedObjects._def_settings.copy()
     _def_settings.update({
-                            'p'      :  p(0,0),
-                            'size'   :  p(None, None),
-                            'grid'   :  p(1,1),
+                            'p'             : p(0,0),
+                            'size'          : p(None, None),
+                            'nodesep'       : p(1,1),
+                            'group'         : None,
+                            'group_margin'  : p(0,0),
+                            'grid'          : p(1,1),
                         })
     
-    _tikz_meta_options = Node._tikz_meta_options +  ['grid']
-
-#     _tikz_options = Node._tikz_options + ['draw']
-
     def __init__(self, size=None, **kwargs):
-        super().__init__(**kwargs)
+        Group.__init__(self)
+        TemplatedObjects.__init__(self, **kwargs)
 
         if size is not None:
             self.size = size
 
-    def _render_tikz_size(self, fig):
-        if self.size:
-            return "minimum width=" + fig.to_units(self.size[0]) + "," + "minimum height=" + fig.to_units(self.size[1])
+    @property
+    def size(self):
+        if self.group == 'tight':
+            if self._child:
+                cmin = p(float("inf"),float("inf"))
+                cmax = p(float("-inf"),float("-inf"))
+    
+                for k,v in self._child.items():
+                    for i in range(2):
+                        if v.n()[i] < cmin[i]:
+                            cmin[i] = v.n()[i]
+                        
+                        if v.s(1.0)[i] > cmax[i]:
+                            cmax[i] = v.s(1.0)[i]
+        
+                return cmax - cmin + 2*self.group_margin
+            else:
+                return p(0,0)
+        else:
+            return self.__getattr__('size')
+    
+    @size.setter
+    def size(self, value):
+        self.__dict__['size'] = value
+#         return TemplatedObjects.__setattr__(self, 'size', p(value))
+
+    @property
+    def p(self):
+        if self.group == 'tight' and self._child:
+            cmin = p(float("inf"),float("inf"))
+            if self.group == 'tight':
+                for k,v in self._child.items():
+                    for i in range(2):
+                        if v.n()[i] < cmin[i]:
+                            cmin[i] = v.n()[i]
+    
+            return cmin - self.group_margin
+        else:
+            return self.__getattr__('p')   
+
+    @p.setter
+    def p(self, value):
+        
+        try:
+            pcur = self.__getattr__('p')
+        
+            pdif = p(value) - pcur
+        
+            for _,v in self._child.items():
+                v.p += pdif
+        except AttributeError:
+            pass
+        
+        self.__dict__['p'] = p(value)
 
     def align(self, other, own=None):
         if own is None:
@@ -716,155 +430,56 @@ class Element(Node):
     @axis_decode('y')
     def wy(self, pos, grid):
         return self.w(pos, 0, grid)[1]
+    
+    def over(self, other=None, pos=1):
+        if other is None:
+            other = self
+            
+        self.p = other.p - (0, self.size[1] + pos*other.nodesep[1])
+        return self
 
-class Shape(Element):
+    def right(self, other=None, pos=1):
+        if other is None:
+            other = self
+            
+        self.p = other.p + (other.size[0] + pos*other.nodesep[0], 0)
+        return self
 
-#     meta_options = Element.meta_options + ['nodesep', 'conn_sep', 'border', 'anchor']
+    def left(self, other=None, pos=1):
+        if other is None:
+            other = self
+            
+        self.p = other.p - (self.size[0] + pos*other.nodesep[0], 0)
+        return self
+
+    def below(self, other=None, pos=1):
+        if other is None:
+            other = self
+            
+        self.p = other.p + (0, other.size[1] + pos*other.nodesep[1])
+        return self
+
+class Shape(Element, TikzNode):
 
     _def_settings = Element._def_settings.copy()
     _def_settings.update({
             'border'        :  True,
-            'nodesep'       : p(1,1),
-            'group'         : None,
-            'group_margin'  : p(0,0),
             'shape'         : 'rectangle'
             })
 
-    _aliases = Element._aliases.copy()
+    _aliases = TikzNode._aliases.copy()
     _aliases.update({
                     'border' : 'draw'
                     })
-    
-    _tikz_meta_options = Element._tikz_meta_options + ['nodesep', 'group', 'group_margin']
-    
-#     _tikz_options = Element._tikz_options + ['dotted', 'fill']
+
+    _tikz_meta_options = TikzNode._tikz_meta_options + ['nodesep', 'group', 'group_margin', 'grid']
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        self._child = {}
-        self._child_keys = []
-
-    @property
-    def size(self):
-        if self.group == 'tight':
-            if self._child:
-                cmin = p(float("inf"),float("inf"))
-                cmax = p(float("-inf"),float("-inf"))
+        Group.__init__(self)
+        Element.__init__(self, *args, **kwargs)
     
-                for k,v in self._child.items():
-                    for i in range(2):
-                        if v.n()[i] < cmin[i]:
-                            cmin[i] = v.n()[i]
-                        
-                        if v.s(1.0)[i] > cmax[i]:
-                            cmax[i] = v.s(1.0)[i]
-        
-                return cmax - cmin + 2*self.group_margin
-            else:
-                return p(0,0)
-        else:
-            return Node.size.__get__(self)
-
-    
-    @size.setter
-    def size(self, value):
-        Node.size.__set__(self, value)
-
-    @property
-    def p(self):
-        if self.group == 'tight' and self._child:
-            cmin = p(float("inf"),float("inf"))
-            if self.group == 'tight':
-                for k,v in self._child.items():
-                    for i in range(2):
-                        if v.n()[i] < cmin[i]:
-                            cmin[i] = v.n()[i]
-    
-            return cmin - self.group_margin
-        else:
-            return self.__getattr__('p')   
-
-    @p.setter
-    def p(self, value):
-        
-        try:
-            pcur = self.__getattr__('p')
-        
-            pdif = p(value) - pcur
-        
-            for _,v in self._child.items():
-                v.p += pdif
-        except AttributeError:
-            pass
-        
-        self.__dict__['p'] = p(value)
-
-    def __iadd__(self, obj):
-        try:
-            key = obj.t
-        except AttributeError:
-            try:
-                key = obj.text.t
-            except AttributeError:
-                key = hash(obj)
-        
-        i = ''
-        while ((key + i) in self._child_keys):
-            if not i:
-                i = '1'
-            else:
-                i = str(int(i) + 1)
-        
-        key += i
-                
-        self.__setitem__(key, obj)
-        
-        return self
-
-    def _get_key(self, val):
-        if isinstance(val, int):
-            return self._child_keys[val], val
-        elif isinstance(val, str):
-            match = ''
-            for i, t in enumerate(self._child_keys):
-                try:
-                    if fnmatch.fnmatch(t, val):
-                        return t, i
-                except AttributeError:
-                    pass
-                
-            raise KeyError
-        else:
-            raise KeyError
-
-    def __delitem__(self, val):
-        key, i = self._get_key(val)
-        
-        del self._child_keys[i]
-        del self._child[key]
-
-    def __getitem__(self, val):
-        return self._child[self._get_key(val)[0]]
-
-    def __setitem__(self, key, val):
-        if key not in self._child:
-            self._child_keys.append(key)
-            
-        self._child[key] = val
-
-    def remove(self, val):
-        self.__delitem__(val)
-
-    def __iter__(self):
-        for k in self._child_keys:
-            yield k
-
     def _render_tikz_shape(self, fig=None):
         return self.shape
-
-    def at(self, ind):
-        return self._child[self._child_keys[ind]]
 
     def a(self, angle=0):
         x = self.size[0]/2*math.cos(angle/180 * math.pi)
@@ -920,82 +535,9 @@ class Shape(Element):
 
         return pos
 
+class Text(Element, TikzNode):
 
-    def over(self, other=None, pos=1):
-        if other is None:
-            other = self
-            
-        self.p = other.p - (0, self.size[1] + pos*other.nodesep[1])
-        return self
-
-    def right(self, other=None, pos=1):
-        if other is None:
-            other = self
-            
-        self.p = other.p + (other.size[0] + pos*other.nodesep[0], 0)
-        return self
-
-    def left(self, other=None, pos=1):
-        if other is None:
-            other = self
-            
-        self.p = other.p - (self.size[0] + pos*other.nodesep[0], 0)
-        return self
-
-    def below(self, other=None, pos=1):
-        if other is None:
-            other = self
-            
-        self.p = other.p + (0, other.size[1] + pos*other.nodesep[1])
-        return self
-
-from os import kill
-from signal import alarm, signal, SIGALRM, SIGKILL
-from subprocess import PIPE, Popen
-
-def run(args, cwd = None, shell = False, kill_tree = True, timeout = -1, env = None, universal_newlines=False ):
-    '''
-    Run a command with a timeout after which it will be forcibly
-    killed.
-    '''
-    class Alarm(Exception):
-        pass
-    def alarm_handler(signum, frame):
-        raise Alarm
-    p = Popen(args, shell = shell, cwd = cwd, stdout = PIPE, stderr = PIPE, env = env, universal_newlines=universal_newlines)
-    if timeout != -1:
-        signal(SIGALRM, alarm_handler)
-        alarm(timeout)
-    try:
-        stdout, stderr = p.communicate()
-        if timeout != -1:
-            alarm(0)
-    except Alarm:
-        pids = [p.pid]
-
-        if kill_tree:
-            pids.extend(get_process_children(p.pid))
-        for pid in pids:
-            # process might have died before getting to this line
-            # so wrap to avoid OSError: no such process
-            try:
-                kill(pid, SIGKILL)
-            except OSError:
-                pass
-        return -9, '', ''
-#         return -9, stdout, stderr
-    return p.returncode, stdout, stderr
-
-def get_process_children(pid):
-    p = Popen('ps --no-headers -o pid --ppid %d' % pid, shell = True,
-              stdout = PIPE, stderr = PIPE)
-    stdout, stderr = p.communicate()
-    return [int(p) for p in stdout.split()]
-
-class Text(Element):
-
-#     meta_options = Element.meta_options + []
-    _aliases = Element._aliases.copy()
+    _aliases = TikzNode._aliases.copy()
     _aliases.update({
                     'alignment': 'align'
                     })
@@ -1007,7 +549,7 @@ class Text(Element):
                         'alignment'     : "center",
                         })
 
-    _tikz_meta_options = Element._tikz_meta_options.copy()
+    _tikz_meta_options = TikzNode._tikz_meta_options.copy() + ['nodesep', 'group', 'group_margin', 'grid']  # @UndefinedVariable
 
     _memo = {}
     _size_measure = False
@@ -1104,14 +646,11 @@ $node
             self.__dict__['size'] = value
 
 class Block(Shape):
-#     meta_options = Shape.meta_options + ['margin', 'text_align']
 
     _def_settings = Shape._def_settings.copy()
     _def_settings.update({
                          'alignment': 'cc'
                          })
-
-#     text_args = ['margin', 'font']
 
     _tikz_meta_options = Shape._tikz_meta_options + ['alignment', 'text']
 
@@ -1124,16 +663,11 @@ class Block(Shape):
     @alignment.setter
     def alignment(self, val):
         if len(val) == 1:
-#             self.settings['text_align'] = val + 'c'
             self.__dict__['alignment'] = val + 'c'
         else:
-#             self.settings['text_align'] = val
             self.__dict__['alignment'] = val
 
     def _render_tikz(self, fig=None):
-#         self.text.p = self.p
-
-#         self.text.align(self.n(), own)
 
         try:
             align = self.alignment
@@ -1175,81 +709,13 @@ class Block(Shape):
             self.text.alignx(xallign_self, xallign_text)
             self.text.aligny(yallign_self, yallign_text)
 
-#         try:
-#             if self.text_align:
-#                 if self.text_align == 'ne':
-#                     self.text.p = self.e(0.0)
-#                     self.text.anchor = self.text.e(0.0)
-#                     self.text.text_align = 'right'
-#                 elif self.text_align == 'nw':
-#                     self.text.p = self.w(0.0)
-#                     self.text.anchor = self.text.w(0.0)
-#                     self.text.text_align = 'left'
-#                 elif self.text_align == 'se':
-#                     self.text.p = self.e(1.0)
-#                     self.text.anchor = self.text.e(1.0)
-#                     self.text.text_align = 'right'
-#                 elif self.text_align == 'sw':
-#                     self.text.p = self.w(1.0)
-#                     self.text.anchor = self.text.w(1.0)
-#                     self.text.text_align = 'left'
-#                 elif self.text_align == 'nc':
-#                     self.text.p = self.n(0.0)
-#                     self.text.size[0] = self.size[0]
-#                     self.text.anchor = self.text.n(0.0)
-#                     self.text.text_align = 'center'
-#                 elif self.text_align == 'sc':
-#                     self.text.p = self.s(0.0)
-#                     self.text.size[0] = self.size[0]
-#                     self.text.anchor = self.text.s(0.0)
-#                     self.text.text_align = 'center'
-#                 elif self.text_align == 'oc':
-#                     self.text.align(self.n(0.5), self.text.s(0.5))
-#                     self.text.text_align = 'center'
-#                 elif self.text_align == 'bc':
-#                     self.text.align(self.s(0.5), self.text.n(0.5))
-#                     self.text.text_align = 'center'
-#                 else:
-#                     self.text.p = self.p
-#                     self.text.size = self.size
-#                     if self.text_align[1] == 'w':
-#                         self.text.text_align = 'left'
-#                     elif self.text_align[1] == 'e':
-#                         self.text.text_align = 'right'
-#                     else:
-#                         self.text.text_align = 'center'
-# 
-# #                 if self.align[0] == 'n':
-# #                     self.text.size = p(None, self.size[1])
-# #                     self.text.p = self.w(0.0)
-# #                 elif self.align[0] == 'c':
-# #                     self.text.size = self.size
-# #                 elif self.align[0] == 's':
-# #                     self.text.size = p(None, None)
-# #                     self.text.p = self.s(1.0)
-# #
-# #                 if len(self.align) > 1:
-# #                     if self.align[1] == 'w':
-# #                         self.text.anchor = self.text.s(0.0)
-# #                         self.text.align = 'left'
-# #                     elif self.align[1] == 'c':
-# #                         self.text.align = 'center'
-# #                     elif self.align[1] == 'e':
-# #                         self.text.anchor = self.text.s(1.0)
-# #                         self.text.align = 'right'
-#         except AttributeError:
-#             pass
-
         text_node = self.text._render_tikz(fig)
-#         text = self.t
-#         self.t = None #Remove text so it wouldn't be printed twice
         shape_node = super()._render_tikz(fig)
-#         self.t = text
+
         return shape_node + '\n' + text_node
 
     @property
     def size(self):
-#         size = self.__getattr__('size')
         size = super(self.__class__, self.__class__).size.__get__(self)
         if (size[0] is None) or (size[1] is None):
             if self.group == 'tight':
@@ -1271,20 +737,12 @@ class Block(Shape):
 
         text_args_dict = {}
 
-#         for a in self.text_args:
-#             if a in kwargs:
-#                 text_args_dict[a] = kwargs[a]
-#                 kwargs.pop(a)
-
         self.text = Text()
 
         super().__init__(size, **kwargs)
 
         if text_t is not None:
-#             text_args_dict['t'] = t
             self.text_t = text_t
-
-
 
         for k,v in text_args_dict.items():
             setattr(self.text, k, v)
@@ -1344,8 +802,8 @@ class Segment(object):
         self.path = path
 
 
-class Path(TikzMeta):
-    _def_settings = TikzMeta._def_settings.copy()
+class Path(TikzMeta, TemplatedObjects):
+    _def_settings = TemplatedObjects._def_settings.copy()
     _def_settings.update({
                          'routedef'     : '--',
                          'path'         : [(0.0, 0.0)],
@@ -1505,11 +963,8 @@ class Path(TikzMeta):
                         i+=1
                 i+=1
 
-
-origin = p(0, 0)
-
-fig = Figure()
-shape = Shape()
-text = Text()
-block = Block()
-path = Path()
+shape = Shape
+text = Text
+block = Block
+path = Path
+group = Element

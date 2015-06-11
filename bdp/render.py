@@ -30,7 +30,7 @@ class BdpError(Exception):
 clear_extensions_pdf = ['.log', '.tex', '.aux']
 clear_extensions_png = clear_extensions_pdf + ['.pdf', '-1.ppm']
 
-def render_tikz(fin, fout=None, outdir=None):
+def render_tikz(fin):
     found = False
     importlib.reload(bdp.node)
 
@@ -42,23 +42,8 @@ def render_tikz(fin, fout=None, outdir=None):
     bdp_mod = loader.load_module()
     end = time.time()
     print ('Elapsed:' + str(end - start))
-
-    if fout is None:
-        fout = os.path.splitext(os.path.basename(fin))[0] + '.tex'
-
-    if outdir is None:
-        outdir = os.path.dirname(fout)
-        
-    if not outdir:
-        outdir = os.path.dirname(fin)
-        
-    if os.path.dirname(fout) == '':
-        fout = os.path.join(outdir, fout)
-
-    with open(fout, 'w') as f:
-        f.write(str(bdp_mod.fig))
-
-    return fout
+    
+    return str(bdp_mod.fig)
 
 def shell(cmdline, input=None, env=None, stderr=PIPE):
     try:
@@ -119,7 +104,7 @@ def pdf2png(pdf_file, resolution=256):
 
     open(os.path.join(outdir, stem + '.png'), 'wb').write(data)
 
-def render(fin, fout=None, outdir=None, options={}):
+def render_fig(fig, fout=None, outdir=None, options={}):
     
     if fout:
         fout_tex = os.path.splitext(fout)[0] + '.tex'
@@ -128,10 +113,18 @@ def render(fin, fout=None, outdir=None, options={}):
         fout_tex = None
         fout_ext = 'pdf'
         
-    tex_file = render_tikz(fin, fout_tex, outdir)
-    base_tex = os.path.splitext(tex_file)[0]
+    if outdir is None:
+        outdir = os.path.dirname(fout)
+        
+    if os.path.dirname(fout) == '':
+        fout = os.path.join(outdir, fout)
+
+    with open(fout_tex, 'w') as f:
+        f.write(str(fig))
+
+    base_tex = os.path.splitext(fout)[0]    
     
-    convert_pdf(tex_file)
+    convert_pdf(fout_tex)
 
     clear_exts_list = clear_extensions_pdf
 
@@ -165,6 +158,17 @@ def render(fin, fout=None, outdir=None, options={}):
             except OSError:
                 pass
         
+
+def render(fin, fout=None, outdir=None, options={}):
+    fig = render_tikz(fin)
+    
+    if not outdir:
+        outdir = os.path.dirname(fin)
+    
+    if fout is None:
+        fout = os.path.splitext(os.path.basename(fin))[0] + '.pdf'
+        
+    render_fig(fig, fout, outdir, options)
 
 def argparser():
     parser = argparse.ArgumentParser(
