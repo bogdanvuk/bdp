@@ -66,12 +66,20 @@ class TikzMeta(object):
         return ','.join(options)
 
 
-class TikzNode(TikzMeta):
+class TikzGroup(object):
+    def _render_tikz(self, fig=None):
+        tikz = ''
+        for c in self:
+            tikz += self[c]._render_tikz(fig)
+            
+        return tikz
+
+class TikzNode(TikzMeta, TikzGroup):
     '''
     classdocs
     '''
 
-    _tikz_meta_options = TikzMeta._tikz_meta_options +  ['p', 't', 'size']
+    _tikz_meta_options = TikzMeta._tikz_meta_options +  ['p', 't']
 
     def _render_tikz_size(self, fig=None):
         if self.size:
@@ -108,7 +116,9 @@ class TikzNode(TikzMeta):
         else:
             text = "{}"
 
-        return ' '.join(["\\node", pos, options, text, ";"])
+        self_tikz = ' '.join(["\\node", pos, options, text, ";\n"])
+        
+        return self_tikz + TikzGroup._render_tikz(self, fig)
 
 
 #     @property

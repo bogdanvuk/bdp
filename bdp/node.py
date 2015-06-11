@@ -21,7 +21,7 @@ import copy
 import math
 
 from bdp.point import Point as p, Poff
-from bdp.tikz_node import TikzNode, TikzMeta
+from bdp.tikz_node import TikzNode, TikzMeta, TikzGroup
 import fnmatch
 from bdp.latex_server import latex_server
 from bdp.figure import fig
@@ -53,6 +53,8 @@ class TemplatedObjects(object):
         
         for k,v in kwargs.items():
             setattr(self, k, copy.deepcopy(v))
+            
+        tmpl_cur[0] = self
 
     def __getattr__(self, attr, *args, **kwargs):
         try:
@@ -91,7 +93,7 @@ class TemplatedObjects(object):
 
     def __call__(self, *args, **kwargs):
         kwargs['template'] = self
-        tmpl_cur[0] = self.__class__(*args, **kwargs)
+        self.__class__(*args, **kwargs)
 
         return tmpl_cur[0]
 
@@ -199,12 +201,12 @@ def axis_decode(axis='x'):
     
     return axis_decode_wrap
 
-class Group(object):
+class Group(TikzGroup):
     def __init__(self, *args, **kwargs):
         self._child = {}
         self._child_keys = []
         
-        self.extend(*args, **kwargs)
+        self.append(*args, **kwargs)
     
     def __iadd__(self, obj):
         try:
@@ -261,7 +263,7 @@ class Group(object):
     def remove(self, val):
         self.__delitem__(val)
         
-    def extend(self, *args, **kwargs):
+    def append(self, *args, **kwargs):
         for a in args:
             self += a
             
@@ -294,24 +296,45 @@ class Element(TemplatedObjects, Group):
         if size is not None:
             self.size = size
 
+    def _bounding_box(self):
+        return (self.p, self.p + self.size)
+    
+    def shift(self, pos):
+        self.p += pos
+        
+        return self
+
     @property
     def size(self):
-        if self.group == 'tight':
+        size = self.__getattr__('size')
+        if self.group == 'tight' or (size[0] is None) or (size[1] is None):
             if self._child:
                 cmin = p(float("inf"),float("inf"))
                 cmax = p(float("-inf"),float("-inf"))
     
                 for k,v in self._child.items():
                     for i in range(2):
-                        if v.n()[i] < cmin[i]:
-                            cmin[i] = v.n()[i]
+                        bb = v._bounding_box()
+                        if bb[0][i] < cmin[i]:
+                            cmin[i] = bb[0][i]
                         
-                        if v.s(1.0)[i] > cmax[i]:
-                            cmax[i] = v.s(1.0)[i]
+                        if bb[1][i] > cmax[i]:
+                            cmax[i] = bb[1][i]
+#                             cmax[i] = v.s(1.0)[i]
         
-                return cmax - cmin + 2*self.group_margin
+        
+                group_size = cmax - cmin + 2*self.group_margin
+                
+                for i in range(2):
+                    if (size[i] is None) or self.group == 'tight':
+                        size[i] = group_size[i]
+                    
+                return size 
             else:
-                return p(0,0)
+                if self.group == 'tight':
+                    return p(0,0)
+                else:
+                    return size
         else:
             return self.__getattr__('size')
     
@@ -343,7 +366,7 @@ class Element(TemplatedObjects, Group):
             pdif = p(value) - pcur
         
             for _,v in self._child.items():
-                v.p += pdif
+                v.shift(pdif)
         except AttributeError:
             pass
         
@@ -455,16 +478,24 @@ class Element(TemplatedObjects, Group):
     def below(self, other=None, pos=1):
         if other is None:
             other = self
-            
+        
         self.p = other.p + (0, other.size[1] + pos*other.nodesep[1])
         return self
+
+class group(Element):
+
+    _def_settings = Element._def_settings.copy()
+    _def_settings.update({
+                            'group'         : 'tight',
+                        })
 
 class Shape(Element, TikzNode):
 
     _def_settings = Element._def_settings.copy()
     _def_settings.update({
             'border'        :  True,
-            'shape'         : 'rectangle'
+            'shape'         : 'rectangle',
+            'group'         : None,
             })
 
     _aliases = TikzNode._aliases.copy()
@@ -823,6 +854,27 @@ class Path(TikzMeta, TemplatedObjects):
 #                                             'double', 'line_width', 'dotted', 
 #                                             'looseness', 'rounded_corners', 
 #                                             'draw', 'decorate', 'decoration']
+
+    def shift(self, pos):
+        for i in range(len(self.path)):
+            self.path[i] += pos
+        
+        return self
+
+    def _bounding_box(self):
+        
+        cmin = p(float("inf"),float("inf"))
+        cmax = p(float("-inf"),float("-inf"))
+
+        for pt in self.path:
+            for i in range(2):
+                if pt[i] < cmin[i]:
+                    cmin[i] = pt[i]
+                
+                if pt[i] > cmax[i]:
+                    cmax[i] = pt[i]
+                    
+        return (cmin, cmax)
 
     def _render_tikz_path(self, fig=None):
         path_tikz = []

@@ -19,6 +19,7 @@
 import fnmatch
 from bdp.point import Point as p
 from string import Template
+import copy
 
 test = r"""
 \documentclass{article}
@@ -64,6 +65,14 @@ $tikz
 $tikz_epilog
 \end{document}
 """)
+
+    def __init__(self):
+        self._tikz = ''
+        self._preamble = ''
+        self._tmpl = []
+        self._live_func = None
+        self._live_args = []
+        self._live_kwargs = {}
     
     def to_units(self,num):
         return "{0:.2f}{1}".format(num*self.grid, "pt")
@@ -72,30 +81,25 @@ $tikz_epilog
         s = s.replace('pt', '')
         return float(s) / self.grid
     
-    def __init__(self):
-        self._tikz = ''
-        self._preamble = ''
-        self._tmpl = []
+    def live_preview_setup(self, live_func, args = [], kwargs = {}):
+        self._live_func = live_func
+        self._live_args = args
+        self._live_kwargs = kwargs
     
-    def _render_recursive(self, val):
-        self._render_val(val)
-        
-        try:
-            for k in val:
-                self._render_recursive(val[k])
-                
-        except TypeError:
-            pass
-                
-    def _render_val(self, val):
+    def add(self, val):
         if hasattr(val, '_render_tikz'):
-            self._tikz += val._render_tikz(self) + '\n'
-            self._tmpl.append(val)
+            self._tikz += val._render_tikz(self)
         else:
-            self._tikz += str(val)  + '\n'
+            self._tikz += str(val)
+            
+        self._tmpl.append(copy.deepcopy(val))
+        
+        if self._live_func is not None:
+            self._live_func(str(self), *self._live_args, **self._live_kwargs)
     
     def __lshift__(self, val):
-        self._render_recursive(val)
+        self.add(val)
+        
         return self
             
     def __getitem__(self, val):

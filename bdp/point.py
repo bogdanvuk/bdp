@@ -115,7 +115,7 @@ def axis_decode(axis='x'):
     return axis_decode_wrap
 
 def mid(p1, p2, d=2):
-    return p1/d + p2/(1-d)
+    return p1/d + p2*(1-1/d)
 
 @axis_decode('x')
 def midx(p1, p2,d):
