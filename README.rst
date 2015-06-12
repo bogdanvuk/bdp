@@ -35,8 +35,7 @@ BDP package comprises:
 
 Image below is a more complex example, which shows how power of Python programming can be used to generate diagrams with BDP. Image shows an UML-like diagram of few major BDP templates.
 
-.. figure:: doc/source/images/uml.png
-  :remote:
+.. image:: https://raw.githubusercontent.com/bogdanvuk/bdp/master/doc/source/images/uml.png
 
 Figure can be rendered with the `uml.py <https://github.com/bogdanvuk/bdp/blob/master/doc/source/images/uml.py>`_ BDP diagram.
 
