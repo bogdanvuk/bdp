@@ -161,6 +161,8 @@ Resulting in:
 
 .. figure:: images/text_attr_access.png
 
+.. _fig_object:
+
 The *fig* object
 ----------------
 
@@ -172,7 +174,7 @@ Resulting in:
 
 .. figure:: images/fig_reference.png
 
-The *fig* object has following attributes that can be used to customize the TikZ rendering:
+When adding a new template to the *fig* object that has the same text as the one added before, the number will be added to the end of the new templates text to form its key in order to make it unique. The *fig* object has following attributes that can be used to customize the TikZ rendering:
 
 .. list-table::
    :widths: 10 30
@@ -213,3 +215,16 @@ The *path* template can also use new **arrays.meta** library (TeX Live 2014 cont
 Resulting in:
 
 .. figure:: images/arrows_meta.png
+
+The *group* template
+--------------------
+
+The *group* template behaves completely identical to the *fig* object when it comes to adding new templates to it and referencing them (they share a common superclass). Please refer to chapter :ref:`fig_object`. Furthermore *block*, *shape* and *text* templates have the same grouping functionality since they derive from *group* template, so this chapter applies to them as well. The *group* is a template and as such can be rendered. When a group is rendered to a *fig*, all its elements are rendered as well. When a group position is changed, the position of all its elements is shifted as well.
+
+Important attribute of the *group* template is called *group* as well. When it is set to 'tight' (which is default for the *group* template), *group* size and position is recalculated whenever a new element is added in such a way that the *group* tightly encompass its all elements. When *group* attribute is set to None (which is default for*block*, *shape* and *text* templates), position and size of the group is independant of the size and position of its elements.
+
+.. literalinclude:: images/group_example.py
+
+Resulting in:
+
+.. figure:: images/group_example.png

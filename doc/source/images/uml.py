@@ -1,11 +1,12 @@
 from bdp import *
+from bdp.group import Group
 import inspect
 
 def fill_group(group, fields, template):
     for name,text in fields:
         text = text.replace('_', '\_') 
         try:
-            group[name] = template(text).align(group.at(-1).s())
+            group[name] = template(text).align(group[-1].s())
         except IndexError:
             group[name] = template(text).align(group.n())
     
@@ -16,7 +17,6 @@ def uml_for_obj(obj, parent=object):
     methods = [(k, '+' + k[0] + '()')
                     for k in inspect.getmembers(obj, predicate=inspect.ismethod)
                         if (k[0][0] != '_') and (not hasattr(parent, k[0]))]
-    
     # populate BDP blocks
     uml = block(r'\textbf{' + obj.__class__.__name__ + '}', alignment='tc', border=False, group='tight')
     field = block(size=(7,None), alignment='cw', border=False, text_margin=(0.2,0.1))
@@ -29,17 +29,17 @@ def uml_for_obj(obj, parent=object):
 
     return uml
 
-block.nodesep = (4,2)
+block = block(nodesep = (4,2))
 
 # generate UML components
-element_uml = uml_for_obj(Element(), Node)
-shape_uml = uml_for_obj(shape, Element())
-block_uml = uml_for_obj(block, shape)
-text_uml = uml_for_obj(text, Element())
+element_uml = uml_for_obj(group(), Group())
+shape_uml = uml_for_obj(shape(), group())
+block_uml = uml_for_obj(block(), shape())
+text_uml = uml_for_obj(text(), group())
 
 # organize components in the diagram 
-shape_uml.right(element_uml)
-text_uml.below(shape_uml)
+shape_uml.right(element_uml).aligny(element_uml.n(), shape_uml.w(-1.0))
+text_uml.below(shape_uml).aligny(element_uml.s(), text_uml.w(2.0))
 block_uml.right(text_uml).aligny(midy(text_uml.n(), shape_uml.n()))
 
 # render the components

@@ -17,6 +17,8 @@
 #  <http://www.gnu.org/licenses/>.
 
 class Point(object):
+    _eps = 1e-3
+    
     def __init__(self, x, y=None):
         try:
             self.x = x[0]
@@ -46,7 +48,7 @@ class Point(object):
     __repr__ = __str__
 
     def __eq__(self, other):
-        return (self[0] == other[0]) and (self[1] == other[1])
+        return (abs(self[0] - other[0]) < self._eps) and (abs(self[1] - other[1]) < self._eps)
 
     def __add__(self, other):
         return Point(self[0] + other[0], self[1] + other[1])

@@ -20,11 +20,11 @@ Contents
 
 .. toctree::
    :maxdepth: 2
-   
+
    tutorial
-   command_line
+   rendering
    sphinxext
-   
+
 Why BDP?
 --------
 
@@ -51,7 +51,7 @@ Image below is a more complex example, which shows how power of Python programmi
 
 .. figure:: images/uml.png
     :width: 70%
-    
+
 Figure can be rendered with the :ref:`Python code <fig-uml-source>` provided below.
 
 Where to start?
@@ -63,21 +63,21 @@ Installation
 BDP package currently supports only Python 3. Following are alternative ways to install BDP.
 
 Install BDP using pip::
-    
+
     pip3 install bdp
 
 Install BDP using easy_install::
-    
+
     easy_install3 bdp
 
 Install BDP from source::
-    
+
     python3 setup.py install
-    
+
 BDP requires TeX Live, which could be installed on a Debian or a Debian-derived systems, with::
 
     # sudo apt-get install texlive
-    
+
 For converting PDF to PNG, pdftoppm, pnmcrop and pnmtopng are needed, which could be installed on a Debian or a Debian-derived systems, with::
 
    # sudo apt-get install poppler-utils
@@ -105,8 +105,8 @@ Source codes for the examples
 
 .. literalinclude:: images/compile_process.py
     :caption: BDP description of the compilation process diagram.
-    
+
 .. _fig-uml-source:
 
 .. literalinclude:: images/uml.py
-    :caption: UML-like diagram of few major BDP templates.    
+    :caption: UML-like diagram of few major BDP templates.

@@ -25,6 +25,7 @@ from bdp.tikz_node import TikzNode, TikzMeta, TikzGroup
 import fnmatch
 from bdp.latex_server import latex_server
 from bdp.figure import fig
+from bdp.group import Group
 
 obj_list = []
 tmpl_cur = [None]
@@ -201,83 +202,7 @@ def axis_decode(axis='x'):
     
     return axis_decode_wrap
 
-class Group(TikzGroup):
-    def __init__(self, *args, **kwargs):
-        self._child = {}
-        self._child_keys = []
-        
-        self.append(*args, **kwargs)
-    
-    def __iadd__(self, obj):
-        try:
-            key = obj.t
-        except AttributeError:
-            try:
-                key = obj.text.t
-            except AttributeError:
-                key = str(hash(obj))
-        
-        i = ''
-        while ((key + i) in self._child_keys):
-            if not i:
-                i = '1'
-            else:
-                i = str(int(i) + 1)
-        
-        key += i
-                
-        self.__setitem__(key, obj)
-        
-        return self
-
-    def _get_key(self, val):
-        if isinstance(val, int):
-            return self._child_keys[val], val
-        elif isinstance(val, str):
-            for i, t in enumerate(self._child_keys):
-                try:
-                    if fnmatch.fnmatch(t, val):
-                        return t, i
-                except AttributeError:
-                    pass
-                
-            raise KeyError
-        else:
-            raise KeyError
-
-    def __delitem__(self, val):
-        key, i = self._get_key(val)
-        
-        del self._child_keys[i]
-        del self._child[key]
-
-    def __getitem__(self, val):
-        return self._child[self._get_key(val)[0]]
-
-    def __setitem__(self, key, val):
-        if key not in self._child:
-            self._child_keys.append(key)
-            
-        self._child[key] = val
-
-    def remove(self, val):
-        self.__delitem__(val)
-        
-    def append(self, *args, **kwargs):
-        for a in args:
-            self += a
-            
-        for k,v in kwargs.items():
-            self[k] = v
-            
-        return self
-            
-    def __iter__(self):
-        for k in self._child_keys:
-            yield k
-    
-
-class Element(TemplatedObjects, Group):
+class Element(TemplatedObjects, Group, TikzGroup):
 
     _def_settings = TemplatedObjects._def_settings.copy()
     _def_settings.update({
@@ -340,7 +265,7 @@ class Element(TemplatedObjects, Group):
     
     @size.setter
     def size(self, value):
-        self.__dict__['size'] = value
+        self.__dict__['size'] = p(value)
 #         return TemplatedObjects.__setattr__(self, 'size', p(value))
 
     @property

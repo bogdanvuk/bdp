@@ -20,6 +20,7 @@ import fnmatch
 from bdp.point import Point as p
 from string import Template
 import copy
+from bdp.group import Group
 
 test = r"""
 \documentclass{article}
@@ -41,9 +42,9 @@ test = r"""
 \end{document}
 """
 
-class Figure(object):
+class Figure(Group):
     grid    = 10
-    origin  = p(1000, 1000)
+    origin  = p(0, 0)
     package = set(['tikz'])
     tikz_library = set(['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings'])
     options = 'yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}'
@@ -67,12 +68,17 @@ $tikz_epilog
 """)
 
     def __init__(self):
+        Group.__init__(self)
+        self.clear()
+        
+    def clear(self):
         self._tikz = ''
         self._preamble = ''
-        self._tmpl = []
+#         self._tmpl = []
         self._live_func = None
         self._live_args = []
         self._live_kwargs = {}
+        Group.clear(self)
     
     def to_units(self,num):
         return "{0:.2f}{1}".format(num*self.grid, "pt")
@@ -86,41 +92,60 @@ $tikz_epilog
         self._live_args = args
         self._live_kwargs = kwargs
     
-    def add(self, val):
-        if hasattr(val, '_render_tikz'):
-            self._tikz += val._render_tikz(self)
-        else:
-            self._tikz += str(val)
-            
-        self._tmpl.append(copy.deepcopy(val))
-        
-        if self._live_func is not None:
-            self._live_func(str(self), *self._live_args, **self._live_kwargs)
+#     def add(self, val):
+#         if hasattr(val, '_render_tikz'):
+#             self._tikz += val._render_tikz(self)
+#         else:
+#             self._tikz += str(val)
+#             
+#         self._tmpl.append(copy.deepcopy(val))
+#         
+#         if self._live_func is not None:
+#             self._live_func(str(self), *self._live_args, **self._live_kwargs)
+    
+    __iadd__ = None
     
     def __lshift__(self, val):
         self.add(val)
         
         return self
+    
+    def __setitem__(self, key, val):
+        if key not in self._child:
+            self._child_keys.append(key)
             
-    def __getitem__(self, val):
-        if isinstance(val, int):
-            return self._tmpl[val]
-        elif isinstance(val, str):
-            for t in self._tmpl:
-                try:
-                    if fnmatch.fnmatch(t.t, val):
-                        return t
-                except AttributeError:
-                    try:
-                        if fnmatch.fnmatch(t.text.t, val):
-                            return t
-                    except AttributeError:
-                        pass
+            if hasattr(val, '_render_tikz'):
+                self._tikz += val._render_tikz(self)
+            else:
+                self._tikz += str(val)
                 
-            raise KeyError
-        else:
-            raise KeyError
-                    
+#             self._tmpl.append(copy.deepcopy(val))
+            
+            if self._live_func is not None:
+                self._live_func(str(self), *self._live_args, **self._live_kwargs)
+            
+            
+        self._child[key] = copy.deepcopy(val)
+            
+#     def __getitem__(self, val):
+#         if isinstance(val, int):
+#             return self._tmpl[val]
+#         elif isinstance(val, str):
+#             for t in self._tmpl:
+#                 try:
+#                     if fnmatch.fnmatch(t.t, val):
+#                         return t
+#                 except AttributeError:
+#                     try:
+#                         if fnmatch.fnmatch(t.text.t, val):
+#                             return t
+#                     except AttributeError:
+#                         pass
+#                 
+#             raise KeyError
+#         else:
+#             raise KeyError
+#                     
             
     def __str__(self):
         

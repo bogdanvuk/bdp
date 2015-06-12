@@ -6,8 +6,6 @@ def test_simple():
 
     fig << a_template
     
-    render_fig(fig, 'test_block_test_simple.pdf')
-    
 def test_spacing():
     t1 = block('T1')
     t2 = block('T2').below(t1)
@@ -20,3 +18,14 @@ def test_spacing():
     assert t4.p == (t1.size[0],0.2*t1.size[1] - 1)
     
     fig << t1 << t2 << t3 << t4
+    
+def test_align():
+    tblock = block(size = (7,5))
+    
+    vert = 'tncsb'
+    hor = 'wce'
+    
+    for i,v in enumerate(vert):
+        for j,h in enumerate(hor):
+            print(v+h)
+            fig << tblock(r"alignment \\ '"+v+h+"'", color='gray!70', alignment=v+h,p=(j*8, i*5.5))

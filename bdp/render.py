@@ -72,7 +72,6 @@ def convert_pdf(tex_file):
         cmd += ['-output-directory', os.path.dirname(tex_file)]
         
     cmd += ["-halt-on-error", tex_file] 
-    
     call(cmd, stderr=STDOUT)
 
 def pdf2png(pdf_file, resolution=256):
@@ -105,7 +104,15 @@ def pdf2png(pdf_file, resolution=256):
     open(os.path.join(outdir, stem + '.png'), 'wb').write(data)
 
 def render_fig(fig, fout=None, outdir=None, options={}):
+    """ Renders the BDP figure to PDF or PNG via Latex
     
+        :param fout: Output PDF or PNG file
+        :type fout: str
+        :param outdir: Output PDF or PNG file
+        :type outdir: str
+        :param options: Dictionary of additional options: 'c', 'p' and 'r'. Please take a look at command line arguments for additional info.
+        :type options: dict
+    """
     if fout:
         fout_tex = os.path.splitext(fout)[0] + '.tex'
         fout_ext = os.path.splitext(fout)[1]
@@ -114,15 +121,15 @@ def render_fig(fig, fout=None, outdir=None, options={}):
         fout_ext = 'pdf'
         
     if outdir is None:
-        outdir = os.path.dirname(fout)
+        outdir = os.path.dirname(fout_tex)
         
-    if os.path.dirname(fout) == '':
-        fout = os.path.join(outdir, fout)
+    if os.path.dirname(fout_tex) == '':
+        fout_tex = os.path.join(outdir, fout_tex)
 
     with open(fout_tex, 'w') as f:
         f.write(str(fig))
 
-    base_tex = os.path.splitext(fout)[0]    
+    base_tex = os.path.splitext(fout_tex)[0]
     
     convert_pdf(fout_tex)
 
@@ -165,7 +172,7 @@ def render(fin, fout=None, outdir=None, options={}):
     if not outdir:
         outdir = os.path.dirname(fin)
     
-    if fout is None:
+    if not fout:
         fout = os.path.splitext(os.path.basename(fin))[0] + '.pdf'
         
     render_fig(fig, fout, outdir, options)

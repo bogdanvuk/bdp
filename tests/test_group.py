@@ -33,9 +33,7 @@ def test_element():
     assert(g1.size == (11, 11))
     
 def test_block():
-    fig = Figure()
-    fig.live_preview_setup(render_fig, args=['test_block.pdf'])
-    
+   
     add_block = block("+", size=p(2,2), shape='circle')
     arrow = path(shorten=(1.5,1.5), style='->')
     
@@ -63,6 +61,4 @@ def test_block():
     
     for a in arr:
         fig << a
-    
-    render_fig(fig, 'test_block.pdf')
-    
+        
