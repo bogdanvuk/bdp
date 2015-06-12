@@ -12,9 +12,9 @@ requires = ['pexpect', 'sphinx-argparse']
 
 setup(
     name='bdp',
-    version='0.1',
+    version='0.2',
     url='https://github.com/bogdanvuk/bdp',
-    download_url = 'https://github.com/bogdanvuk/bdp/tarball/0.1',
+    download_url = 'https://github.com/bogdanvuk/bdp/tarball/0.2',
     license='BSD',
     author='Bogdan Vukobratovic',
     author_email='bogdan.vukobratovic@gmail.com',
@@ -31,7 +31,6 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Framework :: Sphinx :: Extension',
-        #'Framework :: Sphinx :: Theme',
         'Topic :: Documentation',
         'Topic :: Utilities',
     ],
