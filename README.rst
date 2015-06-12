@@ -4,7 +4,7 @@ Welcome to BDP
 
 BDP (Block Diagrams in Python) aims to become a Python fronted for `TikZ <http://www.texample.net/tikz/>`_ when it comes to drawing block diagrams in order to facilitate the process. BDP wraps the `TikZ <http://www.texample.net/tikz/>`_ statements into the Python objects so that users can describe diagrams in pure Python. However, inserting raw `TikZ <http://www.texample.net/tikz/>`_ in BDP is also possible. Figure below shows an BDP example image which represents the BDP compilation process.
 
-.. figure:: https://raw.githubusercontent.com/bogdanvuk/bdp/master/doc/source/images/compile_process.png
+.. figure:: <https://raw.githubusercontent.com/bogdanvuk/bdp/master/doc/source/images/compile_process.png>
     :remote:
     :width: 40%
 
