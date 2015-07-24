@@ -298,6 +298,31 @@ class Element(TemplatedObjects, Group, TikzGroup):
         
         self.__dict__['p'] = p(value)
 
+    def move(self, pos):
+        self.p += pos
+        
+        return self
+    
+    def movex(self, pos):
+        try:
+            p_x = pos[0]
+        except TypeError:
+            p_x = pos
+            
+        self.p += p(p_x, 0)
+        
+        return self
+    
+    def movey(self, pos):
+        try:
+            p_y = pos[1]
+        except TypeError:
+            p_y = pos
+            
+        self.p += p(0, p_y)
+        
+        return self
+
     def align(self, other, own=None):
         if own is None:
             own = self.p
