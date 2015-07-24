@@ -274,9 +274,10 @@ class Element(TemplatedObjects, Group, TikzGroup):
             cmin = p(float("inf"),float("inf"))
             if self.group == 'tight':
                 for k,v in self._child.items():
+                    bb = v._bounding_box()
                     for i in range(2):
-                        if v.n()[i] < cmin[i]:
-                            cmin[i] = v.n()[i]
+                        if bb[0][i] < cmin[i]:
+                            cmin[i] = bb[0][i]
     
             return cmin - self.group_margin
         else:
@@ -709,7 +710,7 @@ class ArrowCap(Instance):
                         'type'          :  'Latex',
                         })
     
-    _tikz_len_measures = Instance._tikz_len_measures + ['length', 'width']
+    _tikz_len_measures = Instance._tikz_len_measures + ['length', 'width', 'line_width']
     
     _tikz_meta_options = Instance._tikz_meta_options + ['fill_color']
     
@@ -759,6 +760,8 @@ class Segment(object):
 
 
 class Path(TikzMeta, TemplatedObjects):
+    OVERLAP_LENGTH_REM_ARTIFACT = 0.05
+    
     _def_settings = TemplatedObjects._def_settings.copy()
     _def_settings.update({
                          'routedef'     : '--',
@@ -768,13 +771,14 @@ class Path(TikzMeta, TemplatedObjects):
                          'draw'         : True,
                          'double'       : False,
                          'border_width' : 0.1,
-                         'fill_color'   : 'white'
+                         'fill'         : 'white',
+                         'line_width'   : 1
                          })
 
     _tikz_len_measures = TikzMeta._tikz_len_measures + ['line_width']
     _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth', 'route', 
                                                         'routedef', 'double', 'border_width',
-                                                        'fill_color']
+                                                        'fill']
 #     _tikz_options = TikzMeta._tikz_options + ['thick', 'ultra_thick', 'shorten',
 #                                             'double', 'line_width', 'dotted', 
 #                                             'looseness', 'rounded_corners', 
@@ -823,18 +827,31 @@ class Path(TikzMeta, TemplatedObjects):
         return 'shorten <=' + fig.to_units(self.shorten[0]) + ',shorten >=' + fig.to_units(self.shorten[1])
 
     def _render_tikz_style(self, fig=None):
-        
-        if isinstance(self.style, str):
-            return self.style
-        else:
-            cap = []
-            for i in range(2):
-                try:
-                    cap.append('{' + self.style[i]._render_tikz(fig) + '}')
-                except AttributeError:
-                    cap.append(str(self.style[i]))
+        cap_text = []
+        for cap in self.style:
+            
+            try:
+                if self.double:
+                    cap.open = True
+                    cap.fill = self.fill
+                    if self.double:
+                        cap.line_width = self.border_width
+                    else:
+                        cap.line_width = self.line_width
+                                        
+                cap_text.append('{' + cap._render_tikz(fig) + '}')
+            except AttributeError:
+                cap_text.append(str(cap))
 
-            return '{0}-{1}'.format(cap[0], cap[1])
+        return '{0}-{1}'.format(cap_text[0], cap_text[1])
+
+#     def _render_tikz_line_width(self, fig=None):
+#         if self.double:
+#             val_text = fig.to_units(self.border_width)
+#         else:
+#             val_text = fig.to_units(self.line_width)
+#             
+#         return 'line width=' + val_text
 
     def _render_tikz_run(self, fig=None):
         options = self._render_tikz_options(fig)
@@ -850,41 +867,54 @@ class Path(TikzMeta, TemplatedObjects):
             return ' '.join(["\\draw ", options, 'plot [smooth]', 'coordinates {', path, "};\n"])
 
     def _render_tikz(self, fig=None):
+        
         tex = self._render_tikz_run(fig)
         
         if self.double:
             self_cpy = copy.deepcopy(self)
             w = self_cpy.border_width
-
+ 
             if not hasattr(self, 'shorten'):
                 self_cpy.shorten = p(0,0)
             
-#             self.shorten = 1.5*p(w,w) + self.shorten
-#             self.line_width -= w
-            self_cpy.shorten = 0.5*p(w,w) + self_cpy.shorten
-            self_cpy.line_width -= w
-            self_cpy.color = self_cpy.fill_color
-            
-            if not isinstance(self_cpy.style, str):
-                self_cpy.style = [copy.deepcopy(self_cpy.style[0]), copy.deepcopy(self_cpy.style[1])]
-            
-            for i in range(2):
-                try:
-                    self_cpy.style[i].length -= 2*w
-                    self_cpy.style[i].width -= 2*w
+            for i, cap in enumerate(self.style):
+                if hasattr(cap, 'length'):
+                    self_cpy.shorten[i] += cap.length - cap.line_width - self.OVERLAP_LENGTH_REM_ARTIFACT
                     
-#                     self_cpy.style[i].length -= w
-#                     self_cpy.style[i].width -= w
-                    try:
-                        self_cpy.style[i].color = self_cpy.style[i].fill_color
-                    except AttributeError:
-                        self_cpy.style[i].color = self_cpy.fill_color
-                    self_cpy.shorten[i] += w
-                except (AttributeError, TypeError):
-#                     self.shorten[i] -= 1.5*w
-                    pass
-
+            self_cpy.line_width -= 2*w
+            self_cpy.color = self_cpy.fill
+            
+            if hasattr(self_cpy, 'style'):
+                delattr(self_cpy, 'style')
+            
             tex += '\n' + self_cpy._render_tikz_run(fig)
+        
+# #             self.shorten = 1.5*p(w,w) + self.shorten
+# #             self.line_width -= w
+#             self_cpy.shorten = 0.5*p(w,w) + self_cpy.shorten
+#             self_cpy.line_width -= w
+#             self_cpy.color = self_cpy.fill_color
+#             
+#             if not isinstance(self_cpy.style, str):
+#                 self_cpy.style = [copy.deepcopy(self_cpy.style[0]), copy.deepcopy(self_cpy.style[1])]
+#             
+#             for i in range(2):
+#                 try:
+#                     self_cpy.style[i].length -= 2*w
+#                     self_cpy.style[i].width -= 2*w
+#                     
+# #                     self_cpy.style[i].length -= w
+# #                     self_cpy.style[i].width -= w
+#                     try:
+#                         self_cpy.style[i].color = self_cpy.style[i].fill_color
+#                     except AttributeError:
+#                         self_cpy.style[i].color = self_cpy.fill_color
+#                     self_cpy.shorten[i] += w
+#                 except (AttributeError, TypeError):
+# #                     self.shorten[i] -= 1.5*w
+#                     pass
+# 
+#             tex += '\n' + self_cpy._render_tikz_run(fig)
             
         return tex
         
