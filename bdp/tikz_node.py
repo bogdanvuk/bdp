@@ -24,6 +24,19 @@ class TikzMeta(object):
     _tikz_len_measures = []
     _aliases = {}
 
+    def _options_dict(self):
+        d = {}
+        
+        for k,v in self.__dict__.items():
+            if k[0] != '_':
+                d[k] = v
+
+        for k,v in self._def_settings.items():
+            if k[0] != '_':
+                d[k] = v
+    
+        return d
+    
     def _options(self, excluded=None):
         if not excluded:
             excluded = set()

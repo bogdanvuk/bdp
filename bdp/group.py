@@ -1,4 +1,24 @@
+#  This file is part of bdp.
+# 
+#  Copyright (C) 2015 Bogdan Vukobratovic
+#
+#  bdp is free software: you can redistribute it and/or modify 
+#  it under the terms of the GNU Lesser General Public License as 
+#  published by the Free Software Foundation, either version 2.1 
+#  of the License, or (at your option) any later version.
+# 
+#  bdp is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU Lesser General Public License for more details.
+# 
+#  You should have received a copy of the GNU Lesser General 
+#  Public License along with bdp.  If not, see 
+#  <http://www.gnu.org/licenses/>.
+
+from bdp.point import Point as p
 import fnmatch
+
 class Group(object):
     def __init__(self, *args, **kwargs):
         self.clear()
@@ -81,7 +101,24 @@ class Group(object):
             self[k] = v
             
         return self
-            
+    
+    def _bounding_box(self):
+        cmin = p(float("inf"),float("inf"))
+        cmax = p(float("-inf"),float("-inf"))
+
+        for k,v in self._child.items():
+            if hasattr(v, '_bounding_box'):
+                bb = v._bounding_box()
+                
+                for i in range(2):
+                    if bb[0][i] < cmin[i]:
+                        cmin[i] = bb[0][i]
+                    
+                    if bb[1][i] > cmax[i]:
+                        cmax[i] = bb[1][i]
+
+        return (cmin, cmax)
+    
     def __iter__(self):
         for k in self._child_keys:
             yield k

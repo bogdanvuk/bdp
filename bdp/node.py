@@ -19,7 +19,6 @@
 from string import Template
 import copy
 import math
-
 from bdp.point import Point as p, Poff
 from bdp.tikz_node import TikzNode, TikzMeta, TikzGroup
 import fnmatch
@@ -210,7 +209,7 @@ class Element(TemplatedObjects, Group, TikzGroup):
                             'size'          : p(None, None),
                             'nodesep'       : p(1,1),
                             'group'         : None,
-                            'group_margin'  : p(0,0),
+                            'group_margin'  : [p(0,0), p(0,0)],
                             'grid'          : p(1,1),
                         })
     
@@ -234,21 +233,8 @@ class Element(TemplatedObjects, Group, TikzGroup):
         size = self.__getattr__('size')
         if self.group == 'tight' or (size[0] is None) or (size[1] is None):
             if self._child:
-                cmin = p(float("inf"),float("inf"))
-                cmax = p(float("-inf"),float("-inf"))
-    
-                for k,v in self._child.items():
-                    for i in range(2):
-                        bb = v._bounding_box()
-                        if bb[0][i] < cmin[i]:
-                            cmin[i] = bb[0][i]
-                        
-                        if bb[1][i] > cmax[i]:
-                            cmax[i] = bb[1][i]
-#                             cmax[i] = v.s(1.0)[i]
-        
-        
-                group_size = cmax - cmin + 2*self.group_margin
+                bb = Group._bounding_box(self)
+                group_size = bb[1] - bb[0] + self.group_margin[0] + self.group_margin[1]
                 
                 for i in range(2):
                     if (size[i] is None) or self.group == 'tight':
@@ -279,7 +265,7 @@ class Element(TemplatedObjects, Group, TikzGroup):
                         if bb[0][i] < cmin[i]:
                             cmin[i] = bb[0][i]
     
-            return cmin - self.group_margin
+            return cmin - self.group_margin[0]
         else:
             return self.__getattr__('p')   
 
@@ -797,7 +783,7 @@ class Path(TikzMeta, TemplatedObjects):
                          'double'       : False,
                          'border_width' : 0.1,
                          'fill'         : 'white',
-                         'line_width'   : 1
+                         'line_width'   : 0.04
                          })
 
     _tikz_len_measures = TikzMeta._tikz_len_measures + ['line_width']
@@ -866,6 +852,9 @@ class Path(TikzMeta, TemplatedObjects):
                                         
                 cap_text.append('{' + cap._render_tikz(fig) + '}')
             except AttributeError:
+                if (not cap) or (cap == '='):
+                    cap = ''
+                    
                 cap_text.append(str(cap))
 
         return '{0}-{1}'.format(cap_text[0], cap_text[1])
@@ -891,57 +880,38 @@ class Path(TikzMeta, TemplatedObjects):
         else:
             return ' '.join(["\\draw ", options, 'plot [smooth]', 'coordinates {', path, "};\n"])
 
-    def _render_tikz(self, fig=None):
+    def _render_tikz(self, fig=None, run=None):
         
-        tex = self._render_tikz_run(fig)
-        
-        if self.double:
-            self_cpy = copy.deepcopy(self)
-            w = self_cpy.border_width
- 
-            if not hasattr(self, 'shorten'):
-                self_cpy.shorten = p(0,0)
-            
-            for i, cap in enumerate(self.style):
-                if hasattr(cap, 'length'):
-                    self_cpy.shorten[i] += cap.length - cap.line_width - self.OVERLAP_LENGTH_REM_ARTIFACT
+        if (run == 'base'):
+            return self._render_tikz_run(fig)
+        elif (run == 'fill'):
+            if self.double:
+                self_cpy = copy.deepcopy(self)
+                w = self_cpy.border_width
+     
+                if not hasattr(self, 'shorten'):
+                    self_cpy.shorten = p(0,0)
+                
+                if hasattr(self_cpy, 'style'):
                     
-            self_cpy.line_width -= 2*w
-            self_cpy.color = self_cpy.fill
-            
-            if hasattr(self_cpy, 'style'):
-                delattr(self_cpy, 'style')
-            
-            tex += '\n' + self_cpy._render_tikz_run(fig)
-        
-# #             self.shorten = 1.5*p(w,w) + self.shorten
-# #             self.line_width -= w
-#             self_cpy.shorten = 0.5*p(w,w) + self_cpy.shorten
-#             self_cpy.line_width -= w
-#             self_cpy.color = self_cpy.fill_color
-#             
-#             if not isinstance(self_cpy.style, str):
-#                 self_cpy.style = [copy.deepcopy(self_cpy.style[0]), copy.deepcopy(self_cpy.style[1])]
-#             
-#             for i in range(2):
-#                 try:
-#                     self_cpy.style[i].length -= 2*w
-#                     self_cpy.style[i].width -= 2*w
-#                     
-# #                     self_cpy.style[i].length -= w
-# #                     self_cpy.style[i].width -= w
-#                     try:
-#                         self_cpy.style[i].color = self_cpy.style[i].fill_color
-#                     except AttributeError:
-#                         self_cpy.style[i].color = self_cpy.fill_color
-#                     self_cpy.shorten[i] += w
-#                 except (AttributeError, TypeError):
-# #                     self.shorten[i] -= 1.5*w
-#                     pass
-# 
-#             tex += '\n' + self_cpy._render_tikz_run(fig)
-            
-        return tex
+                    for i, cap in enumerate(self.style):
+                        if hasattr(cap, 'length'):
+                            self_cpy.shorten[i] += cap.length - cap.line_width - self.OVERLAP_LENGTH_REM_ARTIFACT
+                        elif cap == '=':
+                            self_cpy.shorten[i] -= self.OVERLAP_LENGTH_REM_ARTIFACT
+                        else:
+                            self_cpy.shorten[i] += self.border_width
+                            
+                    delattr(self_cpy, 'style')
+                        
+                self_cpy.line_width -= 2*w
+                self_cpy.color = self_cpy.fill
+                
+                return self_cpy._render_tikz_run(fig)
+            else:
+                return ''
+        else:
+            return self._render_tikz(fig, 'base') + '\n' + self._render_tikz(fig, 'fill')
         
     def __getitem__(self, key):
         if isinstance(key, slice):
@@ -995,8 +965,25 @@ class Path(TikzMeta, TemplatedObjects):
                         i+=1
                 i+=1
 
+class Net(TemplatedObjects, Group):
+    
+    def _render_tikz(self, fig=None):
+        tikz = ''
+        for c in self:
+            tikz += self[c]._render_tikz(fig, run='base')
+        
+        for c in self:
+            tikz += self[c]._render_tikz(fig, run='fill')
+        
+        return tikz
+    
+    def __init__(self, *paths, **kwargs):
+        Group.__init__(self, *paths)
+        TemplatedObjects.__init__(self, **kwargs)      
+
 shape = Shape
 text = Text
 block = Block
 path = Path
 group = Element
+net = Net

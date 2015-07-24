@@ -20,13 +20,21 @@ class Point(object):
     _eps = 1e-3
     
     def __init__(self, x, y=None):
-        try:
-            self.x = x[0]
-            self.y = x[1]
-        except TypeError:
-            self.x = x
-            self.y = y
-
+        if y is not None:
+            try:
+                self.x = x[0]
+                self.y = y[1]
+            except TypeError:
+                self.x = x
+                self.y = y
+        else:
+            try:
+                self.x = x[0]
+                self.y = x[1]
+            except TypeError:
+                self.x = x
+                self.y = None
+            
     def __getitem__(self, key):
         if key == 0:
             return self.x
