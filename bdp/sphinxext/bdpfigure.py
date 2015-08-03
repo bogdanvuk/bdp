@@ -38,25 +38,25 @@ class BdpFigureDirective(Figure):
 
     def run(self):
 
-        print('Here!')
-        print(self.arguments)
+#         print('Here!')
+#         print(self.arguments)
         
-        text = '\n'.join(self.content)
         try:
             filename = self.arguments[0]
         except:
             filename = None
+            text = '\n'.join(self.content)
+            try:
+                self.content[0] = self.options['caption']
+    
+                while len(self.content) > 1:
+                    self.content.trim_end(len(self.content) - 1)
+            except:
+                self.content = None
+
         
         self.arguments = ['']
-        
-        try:
-            self.content[0] = self.options['caption']
-
-            while len(self.content) > 1:
-                self.content.trim_end(len(self.content) - 1)
-        except:
-            self.content = None
-            
+                    
         (figure_node,) = Figure.run(self)
         if isinstance(figure_node, nodes.system_message):
             return [figure_node]
@@ -282,3 +282,4 @@ def setup(app):
     app.add_directive('bdp', BdpFigureDirective)
 #     app.add_node(bdpfigure,
 #                  latex=(visit_bdpfigure, depart_bdpfigure))
+

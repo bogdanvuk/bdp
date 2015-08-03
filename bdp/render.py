@@ -22,7 +22,7 @@ import os
 import argparse
 from subprocess import Popen, PIPE
 
-import bdp.node
+from bdp import reset_fig
 
 class BdpError(Exception):
     pass
@@ -32,13 +32,14 @@ clear_extensions_png = clear_extensions_pdf + ['.pdf', '-1.ppm']
 
 def render_tikz(fin):
     found = False
-    importlib.reload(bdp.node)
-
+#     importlib.reload(bdp.node)
+# 
     loader = importlib.machinery.SourceFileLoader("", fin)
     import time
 
+    reset_fig()
     start = time.time()
-
+    
     bdp_mod = loader.load_module()
     end = time.time()
     print ('Elapsed:' + str(end - start))
