@@ -64,7 +64,7 @@ class Group(object):
         elif isinstance(val, str):
             for i, t in enumerate(self._child_keys):
                 try:
-                    if fnmatch.fnmatch(t, val):
+                    if fnmatch.fnmatch(t, val + '*'):
                         return t, i
                 except AttributeError:
                     pass

@@ -169,4 +169,8 @@ $tikz_epilog
                                         )
 
 
+def reset_fig():
+    fig_new = Figure()
+    fig.__dict__ = fig_new.__dict__
+
 fig = Figure()

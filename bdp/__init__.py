@@ -27,5 +27,5 @@ except ImportError:
 
 from bdp.point import Point as p, Poff as poff, Poffy as poffy, Poffx as poffx, mid, midy, midx
 from bdp.node import block, prev, path, shape, text, Element, cap, group, net
-from bdp.figure import fig, Figure
+from bdp.figure import fig, Figure, reset_fig
 from bdp.render import render_fig
