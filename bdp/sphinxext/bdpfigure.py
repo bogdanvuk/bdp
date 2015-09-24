@@ -151,7 +151,7 @@ def render_bdpfigure(app, filename, options):
         os.makedirs(outdir)
 
     if not os.path.isfile(filename):
-        for bdpdir in app.env.config.bdpfigure_bdpinputs:
+        for bdpdir in app.env.config.bdp_bdpinputs:
             bdpdir = os.path.join(app.env.srcdir, bdpdir)
             filename = os.path.join(bdpdir, basename)
             if os.path.isfile(filename):

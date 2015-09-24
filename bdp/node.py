@@ -576,7 +576,7 @@ $node
             for i in range(2):
                 if size[i] is None:
 #                                 size[0] = math.ceil(from_units(vals[0]) + (2*self.margin[0]))
-                    size[i] = fig.from_units(vals[i]) + (2*self.margin[i])
+                    size[i] = fig.from_units(vals[i]) + (2*self.margin[i]) + 0.1
 
                     if size[i] == 0:
                         size[i] = 1
