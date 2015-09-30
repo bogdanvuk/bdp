@@ -940,19 +940,22 @@ class Path(TikzMeta, TemplatedObjects):
 #         if route is not None:
 #             self.route = route
 
-        self.path = list(path)
+        self.path = []
 
         if path:
             
 #             path_route_list = [itertools.zip_longest(self.path, self.route, fillvalue=self.routedef)]
 
-            for i in range(len(self.path)):
+            for i in range(len(path)):
                 if i >= len(self.route):
                     self.route.append(self.routedef)
 
-            for i in range(1, len(self.path)):
-                if isinstance(self.path[i], Prel):
-                    self.path[i] = self.path[i].pabs(self.path[i-1]) #self.path[i-1] + self.path[i]
+            self.path.append(p(path[0]))
+            for i in range(1, len(path)):
+                if isinstance(path[i], Prel):
+                    self.path.append(path[i].pabs(self.path[i-1])) #self.path[i-1] + self.path[i]
+                else:
+                    self.path.append(p(path[i]))
                     
             i = 0
             while i < len(self.path) - 1:
