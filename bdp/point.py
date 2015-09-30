@@ -78,8 +78,17 @@ class Point(object):
     def __rmul__(self, other):
         return Point(self[0] * other, self[1] * other)
 
-class Poff(Point):
-    pass
+class Prel(Point):
+    
+    def __init__(self, rel):
+        self.rel = rel
+    
+    def pabs(self, origin):
+        return origin
+
+class Poff(Prel):
+    def pabs(self, origin):
+        return origin + self.rel
 
 class Poffx(Poff):
     def __init__(self, val):
@@ -98,6 +107,15 @@ class Poffy(Poff):
             pass
         
         Poff.__init__(self, (0, val))
+        
+class Prectx(Prel):
+    def pabs(self, origin):
+        return Point(self.rel[0], origin[1])
+
+class Precty(Prel):
+    def pabs(self, origin):
+        return Point(origin[0], self.rel[1])
+
 
 def axis_decode(axis='x'):
 

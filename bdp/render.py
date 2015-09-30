@@ -114,11 +114,12 @@ def render_fig(fig, fout=None, outdir=None, options={}):
         :param options: Dictionary of additional options: 'c', 'p' and 'r'. Please take a look at command line arguments for additional info.
         :type options: dict
     """
+    
     if fout:
         fout_tex = os.path.splitext(fout)[0] + '.tex'
         fout_ext = os.path.splitext(fout)[1]
     else:
-        fout_tex = None
+        fout_tex = os.path.splitext(sys.argv[0])[0] + '.tex'
         fout_ext = 'pdf'
         
     if outdir is None:

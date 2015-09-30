@@ -19,7 +19,7 @@
 from string import Template
 import copy
 import math
-from bdp.point import Point as p, Poff
+from bdp.point import Point as p, Prel
 from bdp.tikz_node import TikzNode, TikzMeta, TikzGroup
 import fnmatch
 from bdp.latex_server import latex_server
@@ -30,6 +30,12 @@ obj_list = []
 tmpl_cur = [None]
 
 def prev(*args, **kwargs):
+    if not args and not kwargs:
+        return tmpl_cur[0]
+    else:
+        return tmpl_cur[0](*args, **kwargs)
+    
+def cur(*args, **kwargs):
     if not args and not kwargs:
         return tmpl_cur[0]
     else:
@@ -752,6 +758,9 @@ class Segment(object):
         return tot_len
 
     def pos(self, pos=0.0):
+        if pos >= 1.0:
+            return self.path[-1]
+        
         pos_len = pos*self.len()
 
         cur_len = 0
@@ -942,8 +951,8 @@ class Path(TikzMeta, TemplatedObjects):
                     self.route.append(self.routedef)
 
             for i in range(1, len(self.path)):
-                if isinstance(self.path[i], Poff):
-                    self.path[i] = self.path[i-1] + self.path[i]
+                if isinstance(self.path[i], Prel):
+                    self.path[i] = self.path[i].pabs(self.path[i-1]) #self.path[i-1] + self.path[i]
                     
             i = 0
             while i < len(self.path) - 1:

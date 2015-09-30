@@ -17,6 +17,7 @@
 #  <http://www.gnu.org/licenses/>.
 
 from bdp.point import Point as p
+from babel.messages.pofile import escape
 
 class TikzMeta(object):
 
@@ -104,7 +105,27 @@ class TikzNode(TikzMeta, TikzGroup):
 
     def _render_tikz_t(self, fig=None):
         try:
-            return self.t
+            tex = ''
+            math_block = False
+            escape_count = 0
+            for c in self.t:
+                if c == '$':
+                    math_block = not math_block
+                    
+                if c == '_':
+                    if (escape_count % 2 == 0) and (not math_block):
+                        tex += '\_'
+                    else:
+                        tex += '_'
+                else:
+                    tex += c
+                    
+                if c == '\\':
+                    escape_count += 1
+                else:
+                    escape_count = 0
+                    
+            return tex
         except AttributeError:
             return ''
 

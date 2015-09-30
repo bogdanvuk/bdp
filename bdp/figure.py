@@ -103,7 +103,12 @@ $tikz_epilog
 #         if self._live_func is not None:
 #             self._live_func(str(self), *self._live_args, **self._live_kwargs)
     
-    __iadd__ = None
+#     __iadd__ = None
+
+    def __iadd__(self, val):
+        self.add(val)
+        
+        return self
     
     def __lshift__(self, val):
         self.add(val)
