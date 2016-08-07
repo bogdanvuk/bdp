@@ -63,11 +63,14 @@ class Group(object):
                 raise
         elif isinstance(val, str):
             for i, t in enumerate(self._child_keys):
-                try:
-                    if fnmatch.fnmatch(t, val + '*'):
-                        return t, i
-                except AttributeError:
-                    pass
+                if t == val:
+                    return t, i
+                else:
+                    try:
+                        if fnmatch.fnmatch(t, val + '*'):
+                            return t, i
+                    except AttributeError:
+                        pass
                 
             raise KeyError
         else:
@@ -122,4 +125,7 @@ class Group(object):
     def __iter__(self):
         for k in self._child_keys:
             yield k
+            
+    def __len__(self):
+        return len(self._child_keys)
     
