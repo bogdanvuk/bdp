@@ -24,6 +24,7 @@ class LatexServer(object):
 \usepackage{calc}
 \usepackage{tikz}
 \usepackage{makecell}
+\usepackage{amsmath}
 
 \newlength\mywidth
 \newlength\myheight
@@ -43,6 +44,7 @@ class LatexServer(object):
 """
     
     def expect(self, tin, tout):
+        # print(tin)
         self.proc.send(tin)
         buffer = []
         while (1):
