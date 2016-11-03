@@ -20,6 +20,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import numbers
+
 class Point:
     _eps = 1e-3
 
@@ -65,7 +67,10 @@ class Point:
         return Point(self[0] + other[0], self[1] + other[1])
 
     def __div__(self, other):
-        return Point(self[0] / other, self[1] / other)
+        if isinstance(other, numbers.Number):
+            return Point(self[0] / other, self[1] / other)
+        else:
+            return Point(self[0] / other[0], self[1] / other[1])
 
     __truediv__ = __div__
 
@@ -73,7 +78,20 @@ class Point:
         return Point(self[0] - other[0], self[1] - other[1])
 
     def __mul__(self, other):
-        return Point(self[0] * other, self[1] * other)
+        if isinstance(other, numbers.Number):
+            return Point(self[0] * other, self[1] * other)
+        else:
+            return Point(self[0] * other[0], self[1] * other[1])
+
+    def __imul__(self, other):
+        if isinstance(other, numbers.Number):
+            self[0] *= other
+            self[1] *= other
+        else:
+            self[0] *= other[0]
+            self[1] *= other[1]
+
+        return self
 
     def __rmul__(self, other):
         return Point(self[0] * other, self[1] * other)

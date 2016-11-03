@@ -22,6 +22,9 @@ from bdp.point import Point as pt
 from string import Template
 import copy
 
+class TikzSyntaxError(Exception):
+    pass
+
 class LatexServer(object):
     latex_preamble = r"""\documentclass{standalone}
 \usepackage{calc}
@@ -75,7 +78,7 @@ $node
                 line = self.proc.readline()
             except pexpect.TIMEOUT:
                 print(''.join(buffer))
-                raise
+                raise TikzSyntaxError
 
             buffer += [line]
 #             print(line)

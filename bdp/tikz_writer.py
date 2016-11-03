@@ -47,11 +47,17 @@ class TikzBase:
         return ','.join(opts)
 
     def _render_default(self, obj, a, fig):
-        return "{}={}".format(a.replace('_', ' '), getattr(obj, a))
+        val = getattr(obj, a)
+        if val:
+            tikz_name = a.replace('_', ' ')
+            if isinstance(val, bool):
+                return "{}".format(tikz_name)
+            else:
+                return "{}={}".format(tikz_name, val)
 
 
 class TikzNode(TikzBase):
-    _tikz_meta_options = TikzBase._tikz_meta_options + ['pos', 'text', 'sizable']
+    _tikz_meta_options = TikzBase._tikz_meta_options + ['pos', 'text']
 
     def render(self, obj, fig):
         pos = self.render_pos(obj, fig)
@@ -59,9 +65,9 @@ class TikzNode(TikzBase):
         text = self.render_text(obj, fig)
 
         if text:
-            return r"\node at ({}) [{}] {{{}}};".format(pos, opts, text) + "\n"
+            return r"\node at ({}) [{}] {{{}}};".format(pos, opts, text)
         else:
-            return r"\node at ({}) [{}];".format(pos, opts) + "\n"
+            return r"\node at ({}) [{}];".format(pos, opts)
 
     def render_size(self, obj, fig):
         return "minimum width={0}, minimum height={1}".format(*fig.to_units(obj.size))
@@ -99,12 +105,26 @@ class TikzNode(TikzBase):
         except (AttributeError, TypeError) as e:
             return ''
 
-class TikzQueryTextSize(TikzNode):
-    _tikz_meta_options = TikzNode._tikz_meta_options + ['pos', 'text']
+class TikzSizable(TikzNode):
+    _tikz_meta_options = TikzNode._tikz_meta_options + ['sizable', 'content_size', 'pad']
+
+class TikzHierarchy(TikzSizable):
+
+    def render(self, obj, fig):
+        parent = super().render(obj, fig)
+        tikz_nodes = [parent]
+
+        for c in obj:
+            tikz_nodes.append(obj[c]._writer.render(obj[c], fig))
+
+        return '\n'.join(tikz_nodes)
+
+
+class TikzQueryTextSize(TikzSizable):
 
     def render_size(self, obj, fig):
         if not obj.sizable:
-            return "text width={0}".format(fig.to_units(obj._size)[0])
+            return "text width={0}".format(fig.to_units(obj.size - obj.pad[0] - obj.pad[1])[0])
 
     def render_pos(self, obj, fig):
         return "0,0"
