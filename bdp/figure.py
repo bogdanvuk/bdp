@@ -17,7 +17,7 @@
 #  <http://www.gnu.org/licenses/>.
 
 import fnmatch
-from bdp.point import Point as p
+from bdp.point import Point as pt
 from string import Template
 import copy
 from bdp.group import Group
@@ -43,8 +43,8 @@ test = r"""
 """
 
 class Figure(Group):
-    grid    = 10
-    origin  = p(0, 0)
+    grid = pt(10,10)
+    origin  = pt(0, 0)
     package = set(['tikz'])
     tikz_library = set(['shapes', 'arrows', 'decorations.pathreplacing', 'decorations.markings'])
     options = 'yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}'
@@ -80,8 +80,15 @@ $tikz_epilog
         self._live_kwargs = {}
         Group.clear(self)
 
-    def to_units(self,num):
-        return "{0:.2f}{1}".format(num*self.grid, "pt")
+    # def to_units(self,num):
+    #     return "{0:.2f}{1}".format(num*self.grid, "pt")
+
+    def to_units(self, p):
+        ret = []
+        for pc, gc in zip(p, self.grid):
+            ret.append("{0:.2f}{1}".format(pc*gc, "pt"))
+
+        return ret
 
     def from_units(self, s):
         s = s.replace('pt', '')

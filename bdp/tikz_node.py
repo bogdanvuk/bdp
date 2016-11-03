@@ -101,10 +101,7 @@ class TikzNode(TikzMeta, TikzGroup):
 
     def _render_tikz_p(self, fig=None):
         pos = self.p + fig.origin + self.size/2
-        if not pos[0] == pos[0]:
-            import pdb
-            pdb.set_trace()
-            pos = self.p + fig.origin + self.size/2
+        assert pos[0] == pos[0] #Check if NaN was obtained
 
         ret = "{0}, {1}".format(fig.to_units(pos[0]), fig.to_units(pos[1]))
         return ret
