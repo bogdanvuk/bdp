@@ -25,7 +25,7 @@ try:
 except ImportError:
     version = None
 
-from bdp.point import Point as p, Poff as poff, Poffy as poffy, Poffx as poffx, Prectx, Precty, mid, midy, midx
+from bdp.point import Point as p, Poff as poff, Poffy as poffy, Poffx as poffx, Prectx as prectx, Precty as precty, mid, midy, midx
 from bdp.node import block, prev, cur, path, shape, text, Element, cap, group, net
 from bdp.figure import fig, Figure, reset_fig
 from bdp.render import render_fig

@@ -34,6 +34,7 @@ def render_tikz(fin):
     found = False
 #     importlib.reload(bdp.node)
 # 
+    sys.path.append(os.path.dirname(fin))
     loader = importlib.machinery.SourceFileLoader("", fin)
     import time
 
