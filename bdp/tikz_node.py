@@ -1,19 +1,19 @@
 #  This file is part of bdp.
-# 
+#
 #  Copyright (C) 2015 Bogdan Vukobratovic
 #
-#  bdp is free software: you can redistribute it and/or modify 
-#  it under the terms of the GNU Lesser General Public License as 
-#  published by the Free Software Foundation, either version 2.1 
+#  bdp is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as
+#  published by the Free Software Foundation, either version 2.1
 #  of the License, or (at your option) any later version.
-# 
+#
 #  bdp is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU Lesser General Public License for more details.
-# 
-#  You should have received a copy of the GNU Lesser General 
-#  Public License along with bdp.  If not, see 
+#
+#  You should have received a copy of the GNU Lesser General
+#  Public License along with bdp.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
 from bdp.point import Point as p
@@ -27,7 +27,7 @@ class TikzMeta(object):
 
     def _options_dict(self):
         d = {}
-        
+
         for k,v in self.__dict__.items():
             if k[0] != '_':
                 d[k] = v
@@ -35,9 +35,9 @@ class TikzMeta(object):
         for k,v in self._def_settings.items():
             if k[0] != '_':
                 d[k] = v
-    
+
         return d
-    
+
     def _options(self, excluded=None):
         if not excluded:
             excluded = set()
@@ -74,7 +74,7 @@ class TikzMeta(object):
                 elif val is not False:
                     if s in self._tikz_len_measures:
                         val = fig.to_units(val)
-                        
+
                     options.append(s.replace('_', ' ') + '=' + str(val))
 
         return ','.join(options)
@@ -85,7 +85,7 @@ class TikzGroup(object):
         tikz = ''
         for c in self:
             tikz += self[c]._render_tikz(fig)
-            
+
         return tikz
 
 class TikzNode(TikzMeta, TikzGroup):
@@ -101,7 +101,14 @@ class TikzNode(TikzMeta, TikzGroup):
 
     def _render_tikz_p(self, fig=None):
         pos = self.p + fig.origin + self.size/2
-        return "{0}, {1}".format(fig.to_units(pos[0]), fig.to_units(pos[1]))
+        if not pos[0] == pos[0]:
+            import pdb
+            pdb.set_trace()
+            pos = self.p + fig.origin + self.size/2
+
+        ret = "{0}, {1}".format(fig.to_units(pos[0]), fig.to_units(pos[1]))
+        return ret
+
 
     def _render_tikz_t(self, fig=None):
         try:
@@ -111,7 +118,7 @@ class TikzNode(TikzMeta, TikzGroup):
             for c in self.t:
                 if c == '$':
                     math_block = not math_block
-                    
+
                 if c == '_':
                     if (escape_count % 2 == 0) and (not math_block):
                         tex += '\_'
@@ -119,12 +126,12 @@ class TikzNode(TikzMeta, TikzGroup):
                         tex += '_'
                 else:
                     tex += c
-                    
+
                 if c == '\\':
                     escape_count += 1
                 else:
                     escape_count = 0
-                    
+
             return tex
         except AttributeError:
             return ''
@@ -151,14 +158,14 @@ class TikzNode(TikzMeta, TikzGroup):
             text = "{}"
 
         self_tikz = ' '.join(["\\node", pos, options, text, ";\n"])
-        
+
         return self_tikz + TikzGroup._render_tikz(self, fig)
 
 
 #     @property
 #     def size(self):
 #         return self.__getattr__('size')
-# 
+#
 #     @size.setter
 #     def size(self, value):
 #         self.__dict__['size'] = p(value)
