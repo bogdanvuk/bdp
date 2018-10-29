@@ -12,7 +12,7 @@ requires = ['pexpect', 'sphinx-argparse']
 
 setup(
     name='bdp',
-    version='0.2',
+    version='0.2.1',
     url='https://github.com/bogdanvuk/bdp',
     download_url = 'https://github.com/bogdanvuk/bdp/tarball/0.2',
     license='BSD',

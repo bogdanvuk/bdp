@@ -20,13 +20,21 @@ class Point(object):
     _eps = 1e-3
     
     def __init__(self, x, y=None):
-        try:
-            self.x = x[0]
-            self.y = x[1]
-        except TypeError:
-            self.x = x
-            self.y = y
-
+        if y is not None:
+            try:
+                self.x = x[0]
+                self.y = y[1]
+            except TypeError:
+                self.x = x
+                self.y = y
+        else:
+            try:
+                self.x = x[0]
+                self.y = x[1]
+            except TypeError:
+                self.x = x
+                self.y = None
+            
     def __getitem__(self, key):
         if key == 0:
             return self.x
@@ -70,8 +78,17 @@ class Point(object):
     def __rmul__(self, other):
         return Point(self[0] * other, self[1] * other)
 
-class Poff(Point):
-    pass
+class Prel(Point):
+    
+    def __init__(self, rel):
+        self.rel = rel
+    
+    def pabs(self, origin):
+        return origin
+
+class Poff(Prel):
+    def pabs(self, origin):
+        return origin + self.rel
 
 class Poffx(Poff):
     def __init__(self, val):
@@ -90,6 +107,15 @@ class Poffy(Poff):
             pass
         
         Poff.__init__(self, (0, val))
+        
+class Prectx(Prel):
+    def pabs(self, origin):
+        return Point(self.rel[0], origin[1])
+
+class Precty(Prel):
+    def pabs(self, origin):
+        return Point(origin[0], self.rel[1])
+
 
 def axis_decode(axis='x'):
 

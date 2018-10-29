@@ -1,19 +1,19 @@
 #  This file is part of bdp.
-# 
+#
 #  Copyright (C) 2015 Bogdan Vukobratovic
 #
-#  bdp is free software: you can redistribute it and/or modify 
-#  it under the terms of the GNU Lesser General Public License as 
-#  published by the Free Software Foundation, either version 2.1 
+#  bdp is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as
+#  published by the Free Software Foundation, either version 2.1
 #  of the License, or (at your option) any later version.
-# 
+#
 #  bdp is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU Lesser General Public License for more details.
-# 
-#  You should have received a copy of the GNU Lesser General 
-#  Public License along with bdp.  If not, see 
+#
+#  You should have received a copy of the GNU Lesser General
+#  Public License along with bdp.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
 import fnmatch
@@ -50,12 +50,12 @@ class Figure(Group):
     options = 'yscale=-1, every node/.style={inner sep=0,outer sep=0, anchor=center}'
     tikz_prolog = ''
     tikz_epilog = ''
-    
+
     template = Template(r"""
 \documentclass{standalone}
 
 $packages
-$tikz_libraries 
+$tikz_libraries
 
 \begin{document}
 \pagestyle{empty}
@@ -70,7 +70,7 @@ $tikz_epilog
     def __init__(self):
         Group.__init__(self)
         self.clear()
-        
+
     def clear(self):
         self._tikz = ''
         self._preamble = ''
@@ -79,54 +79,59 @@ $tikz_epilog
         self._live_args = []
         self._live_kwargs = {}
         Group.clear(self)
-    
+
     def to_units(self,num):
         return "{0:.2f}{1}".format(num*self.grid, "pt")
-    
+
     def from_units(self, s):
         s = s.replace('pt', '')
         return float(s) / self.grid
-    
+
     def live_preview_setup(self, live_func, args = [], kwargs = {}):
         self._live_func = live_func
         self._live_args = args
         self._live_kwargs = kwargs
-    
+
 #     def add(self, val):
 #         if hasattr(val, '_render_tikz'):
 #             self._tikz += val._render_tikz(self)
 #         else:
 #             self._tikz += str(val)
-#             
+#
 #         self._tmpl.append(copy.deepcopy(val))
-#         
+#
 #         if self._live_func is not None:
 #             self._live_func(str(self), *self._live_args, **self._live_kwargs)
-    
-    __iadd__ = None
-    
+
+#     __iadd__ = None
+
+    def __iadd__(self, val):
+        self.add(val)
+
+        return self
+
     def __lshift__(self, val):
         self.add(val)
-        
+
         return self
-    
+
     def __setitem__(self, key, val):
         if key not in self._child:
             self._child_keys.append(key)
-            
+
             if hasattr(val, '_render_tikz'):
                 self._tikz += val._render_tikz(self)
             else:
                 self._tikz += str(val)
-                
+
 #             self._tmpl.append(copy.deepcopy(val))
-            
+
             if self._live_func is not None:
                 self._live_func(str(self), *self._live_args, **self._live_kwargs)
-            
-            
+
+
         self._child[key] = copy.deepcopy(val)
-            
+
 #     def __getitem__(self, val):
 #         if isinstance(val, int):
 #             return self._tmpl[val]
@@ -141,16 +146,16 @@ $tikz_epilog
 #                             return t
 #                     except AttributeError:
 #                         pass
-#                 
+#
 #             raise KeyError
 #         else:
 #             raise KeyError
-#                     
-            
+#
+
     def __str__(self):
-        
+
 #         return test
-        
+
         packages = ''
         for p in self.package:
             packages += r'\usepackage{' + p + '}\n'
@@ -158,7 +163,7 @@ $tikz_epilog
         tikz_libraries = ''
         for l in self.tikz_library:
             tikz_libraries += r'\usetikzlibrary{' + l + '}\n'
-        
+
         return self.template.substitute(
                                         packages = packages,
                                         tikz_libraries = tikz_libraries,
@@ -168,5 +173,9 @@ $tikz_epilog
                                         tikz_epilog = self.tikz_epilog
                                         )
 
+
+def reset_fig():
+    fig_new = Figure()
+    fig.__dict__ = fig_new.__dict__
 
 fig = Figure()

@@ -1,26 +1,25 @@
 #  This file is part of bdp.
-# 
+#
 #  Copyright (C) 2015 Bogdan Vukobratovic
 #
-#  bdp is free software: you can redistribute it and/or modify 
-#  it under the terms of the GNU Lesser General Public License as 
-#  published by the Free Software Foundation, either version 2.1 
+#  bdp is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Lesser General Public License as
+#  published by the Free Software Foundation, either version 2.1
 #  of the License, or (at your option) any later version.
-# 
+#
 #  bdp is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU Lesser General Public License for more details.
-# 
-#  You should have received a copy of the GNU Lesser General 
-#  Public License along with bdp.  If not, see 
+#
+#  You should have received a copy of the GNU Lesser General
+#  Public License along with bdp.  If not, see
 #  <http://www.gnu.org/licenses/>.
 
 from string import Template
 import copy
 import math
-
-from bdp.point import Point as p, Poff
+from bdp.point import Point as p, Prel
 from bdp.tikz_node import TikzNode, TikzMeta, TikzGroup
 import fnmatch
 from bdp.latex_server import latex_server
@@ -36,6 +35,12 @@ def prev(*args, **kwargs):
     else:
         return tmpl_cur[0](*args, **kwargs)
 
+def cur(*args, **kwargs):
+    if not args and not kwargs:
+        return tmpl_cur[0]
+    else:
+        return tmpl_cur[0](*args, **kwargs)
+
 
 class TemplatedObjects(object):
     _def_settings = {}
@@ -45,16 +50,16 @@ class TemplatedObjects(object):
 
         for k,v in self._def_settings.items():
             setattr(self, k, copy.deepcopy(v))
-        
+
         if template is not None:
             for k,v in template.__dict__.items():
                 setattr(self, k, copy.deepcopy(v))
 
         self._template = template
-        
+
         for k,v in kwargs.items():
             setattr(self, k, copy.deepcopy(v))
-            
+
         tmpl_cur[0] = self
 
     def __getattr__(self, attr, *args, **kwargs):
@@ -100,27 +105,27 @@ class TemplatedObjects(object):
 
 class Instance(TikzMeta, TemplatedObjects):
     _tikz_meta_options = TikzMeta._tikz_meta_options +  ['type']
-    
+
     def _render_tikz(self, fig=None):
         options = self._render_tikz_options(fig)
         if options:
             options = "[{0}]".format(options)
-            
-        return self.type + options 
+
+        return self.type + options
 
 def pos_decode(major='x'):
 
     def axis_decode_wrap(func):
         def coord(self, p1=None, p2=None, grid=None):
             pos = p(None, None)
-            
+
             if major == 'x':
                 maj_ind = 0
                 min_ind = 1
             else:
                 maj_ind = 1
                 min_ind = 0
-            
+
             try:
                 pos = p(p1[0], p1[1])
             except (TypeError, KeyError):
@@ -130,16 +135,16 @@ def pos_decode(major='x'):
                 pos[min_ind] = p2[0]
             except (TypeError, KeyError):
                 pos[min_ind] = p2
-            
+
             for i in range(2):
                 if pos[i] is None:
                     pos[i] = 0
-                
+
             if grid is None:
                 grid = self.grid
             else:
                 grid_int = p(None, None)
-                
+
                 try:
                     grid_int = p(grid[0], grid[1])
                 except (TypeError, KeyError):
@@ -148,19 +153,19 @@ def pos_decode(major='x'):
                 for i in range(2):
                     if grid_int[i] is None:
                         grid_int[i] = self.grid[i]
-                    
+
                 grid = grid_int
-            
+
             for i in range(2):
                 if isinstance( pos[i], int ):
                     pos[i] *= grid[i]
                 else:
                     pos[i] *= self.size[i]
-            
+
             return func(self, pos)
-        
+
         return coord
-    
+
     return axis_decode_wrap
 
 def axis_decode(axis='x'):
@@ -171,20 +176,20 @@ def axis_decode(axis='x'):
                 ax_ind = 0
             else:
                 ax_ind = 1
-            
+
             try:
                 pos = p1[ax_ind]
             except TypeError:
                 pos = p1
-    
+
             if pos is None:
                 pos = 0
-                
+
             if grid is None:
                 grid = self.grid
             else:
                 grid_int = p(None, None)
-                
+
                 try:
                     grid_int = p(grid[0], grid[1])
                 except (TypeError, KeyError):
@@ -193,13 +198,13 @@ def axis_decode(axis='x'):
                 for i in range(2):
                     if grid_int[i] is None:
                         grid_int[i] = self.grid[i]
-                    
+
                 grid = grid_int
-            
+
             return func(self, pos, grid)
-        
+
         return coord
-    
+
     return axis_decode_wrap
 
 class Element(TemplatedObjects, Group, TikzGroup):
@@ -210,10 +215,10 @@ class Element(TemplatedObjects, Group, TikzGroup):
                             'size'          : p(None, None),
                             'nodesep'       : p(1,1),
                             'group'         : None,
-                            'group_margin'  : p(0,0),
+                            'group_margin'  : [p(0,0), p(0,0)],
                             'grid'          : p(1,1),
                         })
-    
+
     def __init__(self, size=None, **kwargs):
         Group.__init__(self)
         TemplatedObjects.__init__(self, **kwargs)
@@ -221,12 +226,12 @@ class Element(TemplatedObjects, Group, TikzGroup):
         if size is not None:
             self.size = size
 
-    def _bounding_box(self):
-        return (self.p, self.p + self.size)
-    
+    # def _bounding_box(self):
+    #     return (self.p, self.p + self.size)
+
     def shift(self, pos):
         self.p += pos
-        
+
         return self
 
     @property
@@ -234,27 +239,15 @@ class Element(TemplatedObjects, Group, TikzGroup):
         size = self.__getattr__('size')
         if self.group == 'tight' or (size[0] is None) or (size[1] is None):
             if self._child:
-                cmin = p(float("inf"),float("inf"))
-                cmax = p(float("-inf"),float("-inf"))
-    
-                for k,v in self._child.items():
-                    for i in range(2):
-                        bb = v._bounding_box()
-                        if bb[0][i] < cmin[i]:
-                            cmin[i] = bb[0][i]
-                        
-                        if bb[1][i] > cmax[i]:
-                            cmax[i] = bb[1][i]
-#                             cmax[i] = v.s(1.0)[i]
-        
-        
-                group_size = cmax - cmin + 2*self.group_margin
-                
+                bb = Group._bounding_box(self)
+                # group_size = bb[1] - bb[0] + self.group_margin[0] + self.group_margin[1]
+                group_size = bb[1] - bb[0] # + self.group_margin[0] + self.group_margin[1]
+
                 for i in range(2):
                     if (size[i] is None) or self.group == 'tight':
                         size[i] = group_size[i]
-                    
-                return size 
+
+                return size
             else:
                 if self.group == 'tight':
                     return p(0,0)
@@ -262,7 +255,7 @@ class Element(TemplatedObjects, Group, TikzGroup):
                     return size
         else:
             return self.__getattr__('size')
-    
+
     @size.setter
     def size(self, value):
         self.__dict__['size'] = p(value)
@@ -272,30 +265,57 @@ class Element(TemplatedObjects, Group, TikzGroup):
     def p(self):
         if self.group == 'tight' and self._child:
             cmin = p(float("inf"),float("inf"))
-            if self.group == 'tight':
-                for k,v in self._child.items():
-                    for i in range(2):
-                        if v.n()[i] < cmin[i]:
-                            cmin[i] = v.n()[i]
-    
-            return cmin - self.group_margin
+            # if self.group == 'tight':
+            #     for k,v in self._child.items():
+            #         bb = v._bounding_box()
+            #         for i in range(2):
+            #             if bb[0][i] < cmin[i]:
+            #                 cmin[i] = bb[0][i]
+
+            # return cmin - self.group_margin[0]
+            return self._bounding_box()[0]
         else:
-            return self.__getattr__('p')   
+            return self.__getattr__('p')
 
     @p.setter
     def p(self, value):
-        
+
         try:
             pcur = self.__getattr__('p')
-        
+
             pdif = p(value) - pcur
-        
+
             for _,v in self._child.items():
                 v.shift(pdif)
         except AttributeError:
             pass
-        
+
         self.__dict__['p'] = p(value)
+
+    def move(self, pos):
+        self.p += pos
+
+        return self
+
+    def movex(self, pos):
+        try:
+            p_x = pos[0]
+        except TypeError:
+            p_x = pos
+
+        self.p += p(p_x, 0)
+
+        return self
+
+    def movey(self, pos):
+        try:
+            p_y = pos[1]
+        except TypeError:
+            p_y = pos
+
+        self.p += p(0, p_y)
+
+        return self
 
     def align(self, other, own=None):
         if own is None:
@@ -350,11 +370,11 @@ class Element(TemplatedObjects, Group, TikzGroup):
     @pos_decode()
     def n(self, pos):
         return self.p + pos
-    
+
     @axis_decode()
     def nx(self, pos, grid):
         return self.n(pos, 0, grid)[0]
-    
+
     @pos_decode('y')
     def e(self, pos):
         return self.p + pos + (self.size[0], 0)
@@ -366,7 +386,7 @@ class Element(TemplatedObjects, Group, TikzGroup):
     @pos_decode()
     def s(self, pos):
         return self.p + pos + (0, self.size[1])
-        
+
     @axis_decode()
     def sx(self, pos, grid):
         return self.s(pos, 0, grid)[0]
@@ -374,36 +394,36 @@ class Element(TemplatedObjects, Group, TikzGroup):
     @pos_decode('y')
     def w(self, pos=0):
         return self.p + pos
-    
+
     @axis_decode('y')
     def wy(self, pos, grid):
         return self.w(pos, 0, grid)[1]
-    
+
     def over(self, other=None, pos=1):
         if other is None:
             other = self
-            
+
         self.p = other.p - (0, self.size[1] + pos*other.nodesep[1])
         return self
 
     def right(self, other=None, pos=1):
         if other is None:
             other = self
-            
+
         self.p = other.p + (other.size[0] + pos*other.nodesep[0], 0)
         return self
 
     def left(self, other=None, pos=1):
         if other is None:
             other = self
-            
+
         self.p = other.p - (self.size[0] + pos*other.nodesep[0], 0)
         return self
 
     def below(self, other=None, pos=1):
         if other is None:
             other = self
-        
+
         self.p = other.p + (0, other.size[1] + pos*other.nodesep[1])
         return self
 
@@ -433,7 +453,7 @@ class Shape(Element, TikzNode):
     def __init__(self, *args, **kwargs):
         Group.__init__(self)
         Element.__init__(self, *args, **kwargs)
-    
+
     def _render_tikz_shape(self, fig=None):
         return self.shape
 
@@ -564,7 +584,7 @@ $node
             for i in range(2):
                 if size[i] is None:
 #                                 size[0] = math.ceil(from_units(vals[0]) + (2*self.margin[0]))
-                    size[i] = fig.from_units(vals[i]) + (2*self.margin[i])
+                    size[i] = fig.from_units(vals[i]) + (2*self.margin[i]) + 0.1
 
                     if size[i] == 0:
                         size[i] = 1
@@ -587,7 +607,7 @@ $node
             else:
                 size = self._get_size_from_text(set_size)
                 self._memo[self.t] = size
-                
+
             for i in range(2):
                 if set_size[i] is None:
                     set_size[i] = size[i]
@@ -629,12 +649,12 @@ class Block(Shape):
             align = self.alignment
         except AttributeError:
             align = ''
-            
+
         if align:
             if align[0] == 'n':
                 yallign_self = self.wy()
                 yallign_text = self.text.wy()
-            elif align[0] == 'c':    
+            elif align[0] == 'c':
                 self.text.size[1] = self.size[1]
                 yallign_self = self.wy()
                 yallign_text = self.text.wy()
@@ -655,13 +675,13 @@ class Block(Shape):
             if align[1] == 'w':
                 xallign_self = self.nx()
                 xallign_text = self.text.nx()
-                self.text.alignment = 'left'  
-            elif align[1] == 'c':    
+                self.text.alignment = 'left'
+            elif align[1] == 'c':
                 self.text.size[0] = self.size[0]
                 xallign_self = self.nx(0.0)
                 xallign_text = self.text.nx(0.0)
                 self.text.alignment = 'center'
-                
+
             self.text.alignx(xallign_self, xallign_text)
             self.text.aligny(yallign_self, yallign_text)
 
@@ -678,13 +698,13 @@ class Block(Shape):
                 text_size = p(0,0)
             else:
                 text_size = self.text.size
-            
+
             for i in range(2):
                 if size[i] is None:
                     size[i] = text_size[i]
 
         return size
-    
+
     @size.setter
     def size(self, value):
         super(self.__class__, self.__class__).size.__set__(self, value)
@@ -708,15 +728,15 @@ class ArrowCap(Instance):
     _def_settings.update({
                         'type'          :  'Latex',
                         })
-    
-    _tikz_len_measures = Instance._tikz_len_measures + ['length', 'width']
-    
+
+    _tikz_len_measures = Instance._tikz_len_measures + ['length', 'width', 'line_width']
+
     _tikz_meta_options = Instance._tikz_meta_options + ['fill_color']
-    
+
     def _render_tikz(self, fig=None):
         fig.tikz_library.add('arrows.meta')
         return super()._render_tikz(fig)
-    
+
 cap = ArrowCap()
 
 class Segment(object):
@@ -740,6 +760,9 @@ class Segment(object):
         return tot_len
 
     def pos(self, pos=0.0):
+        if pos >= 1.0:
+            return self.path[-1]
+
         pos_len = pos*self.len()
 
         cur_len = 0
@@ -759,6 +782,8 @@ class Segment(object):
 
 
 class Path(TikzMeta, TemplatedObjects):
+    OVERLAP_LENGTH_REM_ARTIFACT = 0.05
+
     _def_settings = TemplatedObjects._def_settings.copy()
     _def_settings.update({
                          'routedef'     : '--',
@@ -768,26 +793,27 @@ class Path(TikzMeta, TemplatedObjects):
                          'draw'         : True,
                          'double'       : False,
                          'border_width' : 0.1,
-                         'fill_color'   : 'white'
+                         'fill'         : 'white',
+                         'line_width'   : 0.04
                          })
 
     _tikz_len_measures = TikzMeta._tikz_len_measures + ['line_width']
-    _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth', 'route', 
+    _tikz_meta_options = TikzMeta._tikz_meta_options + ['path',  'smooth', 'route',
                                                         'routedef', 'double', 'border_width',
-                                                        'fill_color']
+                                                        'fill']
 #     _tikz_options = TikzMeta._tikz_options + ['thick', 'ultra_thick', 'shorten',
-#                                             'double', 'line_width', 'dotted', 
-#                                             'looseness', 'rounded_corners', 
+#                                             'double', 'line_width', 'dotted',
+#                                             'looseness', 'rounded_corners',
 #                                             'draw', 'decorate', 'decoration']
 
     def shift(self, pos):
         for i in range(len(self.path)):
             self.path[i] += pos
-        
+
         return self
 
     def _bounding_box(self):
-        
+
         cmin = p(float("inf"),float("inf"))
         cmax = p(float("-inf"),float("-inf"))
 
@@ -795,15 +821,15 @@ class Path(TikzMeta, TemplatedObjects):
             for i in range(2):
                 if pt[i] < cmin[i]:
                     cmin[i] = pt[i]
-                
+
                 if pt[i] > cmax[i]:
                     cmax[i] = pt[i]
-                    
+
         return (cmin, cmax)
 
     def _render_tikz_path(self, fig=None):
         path_tikz = []
-        
+
         for p,r in zip(self.path, self.route):
 
             pos = p + fig.origin
@@ -811,8 +837,8 @@ class Path(TikzMeta, TemplatedObjects):
 
             path_tikz.append(path_str)
             if not self.smooth:
-                path_tikz.append('--')
-#                 path_tikz.append(r)
+#                path_tikz.append('--')
+                path_tikz.append(r)
 
         if not self.smooth:
             return ' '.join(path_tikz[:-1])
@@ -823,18 +849,34 @@ class Path(TikzMeta, TemplatedObjects):
         return 'shorten <=' + fig.to_units(self.shorten[0]) + ',shorten >=' + fig.to_units(self.shorten[1])
 
     def _render_tikz_style(self, fig=None):
-        
-        if isinstance(self.style, str):
-            return self.style
-        else:
-            cap = []
-            for i in range(2):
-                try:
-                    cap.append('{' + self.style[i]._render_tikz(fig) + '}')
-                except AttributeError:
-                    cap.append(str(self.style[i]))
+        cap_text = []
+        for cap in self.style:
 
-            return '{0}-{1}'.format(cap[0], cap[1])
+            try:
+                if self.double:
+                    cap.open = True
+                    cap.fill = self.fill
+                    if self.double:
+                        cap.line_width = self.border_width
+                    else:
+                        cap.line_width = self.line_width
+
+                cap_text.append('{' + cap._render_tikz(fig) + '}')
+            except AttributeError:
+                if (not cap) or (cap == '='):
+                    cap = ''
+
+                cap_text.append(str(cap))
+
+        return '{0}-{1}'.format(cap_text[0], cap_text[1])
+
+#     def _render_tikz_line_width(self, fig=None):
+#         if self.double:
+#             val_text = fig.to_units(self.border_width)
+#         else:
+#             val_text = fig.to_units(self.line_width)
+#
+#         return 'line width=' + val_text
 
     def _render_tikz_run(self, fig=None):
         options = self._render_tikz_options(fig)
@@ -849,45 +891,39 @@ class Path(TikzMeta, TemplatedObjects):
         else:
             return ' '.join(["\\draw ", options, 'plot [smooth]', 'coordinates {', path, "};\n"])
 
-    def _render_tikz(self, fig=None):
-        tex = self._render_tikz_run(fig)
-        
-        if self.double:
-            self_cpy = copy.deepcopy(self)
-            w = self_cpy.border_width
+    def _render_tikz(self, fig=None, run=None):
 
-            if not hasattr(self, 'shorten'):
-                self_cpy.shorten = p(0,0)
-            
-#             self.shorten = 1.5*p(w,w) + self.shorten
-#             self.line_width -= w
-            self_cpy.shorten = 0.5*p(w,w) + self_cpy.shorten
-            self_cpy.line_width -= w
-            self_cpy.color = self_cpy.fill_color
-            
-            if not isinstance(self_cpy.style, str):
-                self_cpy.style = [copy.deepcopy(self_cpy.style[0]), copy.deepcopy(self_cpy.style[1])]
-            
-            for i in range(2):
-                try:
-                    self_cpy.style[i].length -= 2*w
-                    self_cpy.style[i].width -= 2*w
-                    
-#                     self_cpy.style[i].length -= w
-#                     self_cpy.style[i].width -= w
-                    try:
-                        self_cpy.style[i].color = self_cpy.style[i].fill_color
-                    except AttributeError:
-                        self_cpy.style[i].color = self_cpy.fill_color
-                    self_cpy.shorten[i] += w
-                except (AttributeError, TypeError):
-#                     self.shorten[i] -= 1.5*w
-                    pass
+        if (run == 'base'):
+            return self._render_tikz_run(fig)
+        elif (run == 'fill'):
+            if self.double:
+                self_cpy = copy.deepcopy(self)
+                w = self_cpy.border_width
 
-            tex += '\n' + self_cpy._render_tikz_run(fig)
-            
-        return tex
-        
+                if not hasattr(self, 'shorten'):
+                    self_cpy.shorten = p(0,0)
+
+                if hasattr(self_cpy, 'style'):
+
+                    for i, cap in enumerate(self.style):
+                        if hasattr(cap, 'length'):
+                            self_cpy.shorten[i] += cap.length - cap.line_width - self.OVERLAP_LENGTH_REM_ARTIFACT
+                        elif cap == '=':
+                            self_cpy.shorten[i] -= self.OVERLAP_LENGTH_REM_ARTIFACT
+                        else:
+                            self_cpy.shorten[i] += self.border_width
+
+                    delattr(self_cpy, 'style')
+
+                self_cpy.line_width -= 2*w
+                self_cpy.color = self_cpy.fill
+
+                return self_cpy._render_tikz_run(fig)
+            else:
+                return ''
+        else:
+            return self._render_tikz(fig, 'base') + '\n' + self._render_tikz(fig, 'fill')
+
     def __getitem__(self, key):
         if isinstance(key, slice):
             return Segment(key, self)
@@ -906,25 +942,29 @@ class Path(TikzMeta, TemplatedObjects):
 #         if route is not None:
 #             self.route = route
 
-        self.path = list(path)
+        self.path = []
 
         if path:
-            
+
 #             path_route_list = [itertools.zip_longest(self.path, self.route, fillvalue=self.routedef)]
 
-            for i in range(len(self.path)):
+            for i in range(len(path)):
                 if i >= len(self.route):
                     self.route.append(self.routedef)
 
-            for i in range(1, len(self.path)):
-                if isinstance(self.path[i], Poff):
-                    self.path[i] = self.path[i-1] + self.path[i]
-                    
+            self.path.append(p(path[0]))
+            for i in range(1, len(path)):
+                if isinstance(path[i], Prel):
+                    self.path.append(path[i].pabs(self.path[i-1])) #self.path[i-1] + self.path[i]
+                else:
+                    self.path.append(p(path[i]))
+
             i = 0
             while i < len(self.path) - 1:
                 pos = self.path[i]
                 pos_next = self.path[i+1]
-                    
+                # import pdb
+                # pdb.set_trace()
                 route = self.route[i]
                 if route == '|-':
                     if (pos[1] != pos_next[1]) and (pos[0] != pos_next[0]):
@@ -932,16 +972,37 @@ class Path(TikzMeta, TemplatedObjects):
                         self.route[i] = '--'
                         self.route.insert(i+1, '--')
                         i+=1
+                    else:
+                        self.route[i] = '--'
                 elif route == '-|':
                     if (pos[1] != pos_next[1]) and (pos[0] != pos_next[0]):
                         self.path.insert(i+1, p(pos_next[0], pos[1]))
                         self.route[i] = '--'
                         self.route.insert(i+1, '--')
                         i+=1
+                    else:
+                        self.route[i] = '--'
                 i+=1
+
+class Net(TemplatedObjects, Group):
+
+    def _render_tikz(self, fig=None):
+        tikz = ''
+        for c in self:
+            tikz += self[c]._render_tikz(fig, run='base')
+
+        for c in self:
+            tikz += self[c]._render_tikz(fig, run='fill')
+
+        return tikz
+
+    def __init__(self, *paths, **kwargs):
+        Group.__init__(self, *paths)
+        TemplatedObjects.__init__(self, **kwargs)
 
 shape = Shape
 text = Text
 block = Block
 path = Path
 group = Element
+net = Net
